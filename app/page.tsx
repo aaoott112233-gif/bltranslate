@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Search, Flame, Crown, Zap, LayoutGrid, Shuffle, 
   ChevronLeft, ChevronRight, Plus, Square, Grid2X2, Grid3X3,
-  Calendar, Clock, CheckCircle, Heart
+  Calendar, Clock, CheckCircle, ExternalLink
 } from "lucide-react";
 import { Toaster } from 'sonner';
 import MangaCard from "@/components/MangaCard";
@@ -99,7 +99,6 @@ export default function Home() {
       if (activeTab === "✅ จบแล้ว") {
         result = result.filter((m: any) => m.status === "completed" || m.status === "จบแล้ว");
       } else {
-        // ✨ ปรับ Map ให้ตรงกับ Value ใน Schema ใหม่ (bl_normal / bl_18)
         const typeMap: any = { "🌈 BL ปกติ": "bl_normal", "🔞 BL 18+": "bl_18" };
         result = result.filter((m: any) => m.mangaType === typeMap[activeTab]);
       }
@@ -178,6 +177,7 @@ export default function Home() {
 
       {/* --- 2. Branding Header: สาววายขอแปล --- */}
       <div className="mt-10 mb-8 px-4 md:px-6 flex flex-col items-center">
+        {/* ✨ นำ scale-110 md:scale-125 และขนาดรูปกลับมาให้เท่าเว็บเดิมเป๊ะๆ */}
         <div className="flex items-center gap-6 mb-5 scale-110 md:scale-125 transition-transform duration-500">
           <div className="relative">
              <div className="absolute inset-0 bg-pink-500 blur-2xl opacity-20 rounded-full" />
@@ -192,7 +192,7 @@ export default function Home() {
               สาววายขอ<span className="text-pink-500">แปล</span>
             </h1>
             <p className="text-pink-400 text-[10px] md:text-[11px] font-bold uppercase tracking-[0.4em] mt-2 opacity-90">
-              แปลแต่วายงับบ • PREMIUM BL QUALITY
+              แปลแต่วายงับบ
             </p>
           </div>
         </div>
@@ -218,7 +218,6 @@ export default function Home() {
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex gap-1.5 bg-[#111] p-1.5 rounded-2xl border border-white/5 w-full md:w-auto overflow-x-auto no-scrollbar">
-              {/* ✨ เปลี่ยนปุ่มแท็บให้เป็น BL โดยเฉพาะ ✨ */}
               {['ทั้งหมด', '🌈 BL ปกติ', '🔞 BL 18+', '✅ จบแล้ว'].map((tab) => (
                 <button 
                   key={tab} 
@@ -230,27 +229,40 @@ export default function Home() {
               ))}
             </div>
             
-            <div className="flex items-center gap-3 w-full md:w-auto justify-center">
+            <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-center flex-wrap sm:flex-nowrap">
+              {/* ✨ ปุ่มลิงก์ไปเว็บชายหญิง */}
+              <a 
+                href="https://translatelover.vercel.app" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-3 md:px-4 md:py-3.5 bg-[#111] hover:bg-indigo-500/10 text-gray-400 hover:text-indigo-400 border border-white/10 hover:border-indigo-500/30 rounded-2xl text-[10px] md:text-[11px] font-black transition-all shadow-lg active:scale-95 whitespace-nowrap"
+                title="ไปเว็บแปลรักข้างหมอน"
+              >
+                <ExternalLink size={14} className="text-indigo-500 flex-shrink-0" />
+                <span className="hidden sm:inline">อ่านแนวชายหญิงคลิกเลย</span>
+                <span className="sm:hidden">แนวชายหญิง</span>
+              </a>
+
               <button 
                 onClick={() => setSelectedManga(allManga[Math.floor(Math.random() * allManga.length)])} 
-                className="p-3.5 bg-[#111] border border-white/10 rounded-2xl text-gray-400 hover:text-pink-500 shadow-lg active:scale-90 transition-all"
+                className="p-3 md:p-3.5 bg-[#111] border border-white/10 rounded-2xl text-gray-400 hover:text-pink-500 shadow-lg active:scale-90 transition-all flex-shrink-0"
                 title="สุ่มเรื่องอ่าน"
               >
-                <Shuffle size={20} />
+                <Shuffle size={18} className="md:w-5 md:h-5" />
               </button>
 
               <button 
                 onClick={() => setShowSchedule(!showSchedule)} 
-                className={`p-3.5 border rounded-2xl shadow-lg transition-all active:scale-90 ${showSchedule ? 'bg-pink-600 border-pink-500 text-white shadow-pink-500/20' : 'bg-[#111] border-white/10 text-gray-400 hover:text-pink-500'}`}
+                className={`p-3 md:p-3.5 border rounded-2xl shadow-lg transition-all active:scale-90 flex-shrink-0 ${showSchedule ? 'bg-pink-600 border-pink-500 text-white shadow-pink-500/20' : 'bg-[#111] border-white/10 text-gray-400 hover:text-pink-500'}`}
                 title="ตารางอัปเดต"
               >
-                <Calendar size={20} />
+                <Calendar size={18} className="md:w-5 md:h-5" />
               </button>
               
-              <div className="flex items-center gap-1.5 bg-[#111] p-1.5 rounded-2xl border border-white/10 shadow-lg">
-                  <button onClick={() => setGridCols(1)} className={`p-2.5 rounded-xl transition-all ${gridCols === 1 ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}><Square size={18}/></button>
-                  <button onClick={() => setGridCols(2)} className={`p-2.5 rounded-xl transition-all ${gridCols === 2 ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}><Grid2X2 size={18}/></button>
-                  <button onClick={() => setGridCols(3)} className={`p-2.5 rounded-xl transition-all ${gridCols === 3 ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}><Grid3X3 size={18}/></button>
+              <div className="flex items-center gap-1.5 bg-[#111] p-1.5 rounded-2xl border border-white/10 shadow-lg flex-shrink-0">
+                  <button onClick={() => setGridCols(1)} className={`p-2 md:p-2.5 rounded-xl transition-all ${gridCols === 1 ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}><Square size={16} className="md:w-[18px] md:h-[18px]" /></button>
+                  <button onClick={() => setGridCols(2)} className={`p-2 md:p-2.5 rounded-xl transition-all ${gridCols === 2 ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}><Grid2X2 size={16} className="md:w-[18px] md:h-[18px]" /></button>
+                  <button onClick={() => setGridCols(3)} className={`p-2 md:p-2.5 rounded-xl transition-all ${gridCols === 3 ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}><Grid3X3 size={16} className="md:w-[18px] md:h-[18px]" /></button>
               </div>
             </div>
           </div>
@@ -369,8 +381,8 @@ export default function Home() {
         )}
       </div>
 
-      <footer className="mt-40 opacity-20 text-[9px] font-black tracking-[1.5em] uppercase text-center border-t border-white/5 pt-20 w-full px-6">
-        สาววายขอแปล • PREMIUM BL QUALITY • 2026
+      <footer className="opacity-20 text-[9px] font-black tracking-[1.5em] uppercase text-center border-t border-white/5 pt-10 mt-10 pb-8 w-full px-6">
+        สาววายขอแปล • 2026
       </footer>
 
       {/* --- 🚨 GLOBAL DETAIL MODAL --- */}
