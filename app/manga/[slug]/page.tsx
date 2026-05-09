@@ -10,11 +10,11 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   
-  // ✨ ปรับ Query ให้ดึงข้อมูลมาทำ SEO ให้ครบถ้วน
+  // ✨ ปรับ Query ดึงข้อมูลมาทำ SEO ให้ครบถ้วน (เอา mangaType มาเผื่อใช้เติมคำว่า 18+ ในชื่อเรื่อง)
   const query = `*[_type == "manga" && slug.current == $slug][0]{
     title,
     description,
-    "coverUrl": cover.asset->url,
+    mangaType,
     "siteTitle": "สาววายขอแปล"
   }`;
   
@@ -26,16 +26,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // ✨ จัดการข้อความ Fallback กรณีไม่มีคำอธิบาย
   const siteDescription = manga.description || `อ่านมังฮวา BL เรื่อง ${manga.title} สนุกฟินจิกหมอน แปลแต่วายงับบ - สาววายขอแปล`;
 
-  // ✨ โลจิกป้องกัน AI แบนลิงก์! (จุดสำคัญที่สุด)
   const isAdult = manga.mangaType === 'bl_18';
   
-  // ถ้าเป็น 18+ ให้ดึงรูปลับมาใช้แทน (เปลี่ยนลิงก์เป็นเว็บจริงของแอดมินด้วยนะครับ)
-  // ถ้าไม่ใช่ 18+ ให้ใช้รูปปกเดิม แต่จำกัดขนาดความกว้างเพื่อไม่ให้เฟสบุ๊คขยายเต็มจอ
-  const shareImageUrl = isAdult 
-    ? "https://bltranslate.vercel.app/profile.png" // 👈 แก้โดเมนตรงนี้ด้วยน้าาา
-    : `${manga.coverUrl}?w=600&fit=max`;
+  // ✨ โลจิกใหม่: บังคับใช้รูปโปรไฟล์เว็บ (โลโก้) เสมอ เพื่อความปลอดภัย 100%
+  // ⚠️ สำคัญ: แอดมินต้องเปลี่ยน "https://bltranslate.vercel.app" เป็นโดเมนเว็บจริงของแอดมินด้วยนะครับ
+  const shareImageUrl = "https://bltranslate.vercel.app/profile.png"; 
 
-  
   return {
     title: `${manga.title} - สาววายขอแปล`,
     description: siteDescription,
@@ -50,16 +46,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName: "สาววายขอแปล",
       images: [
         {
-          url: shareImageUrl, // ✨ ใช้รูปที่ผ่านการกรองแล้ว
-          width: 600,
-          height: isAdult ? 600 : 850, // ปรับความสูงตามชนิดรูป (โปรไฟล์=จัตุรัส / ปก=แนวตั้ง)
-          alt: manga.title,
+          url: shareImageUrl, // ✨ ใช้รูปโลโก้อย่างเดียวเท่านั้น!
+          width: 800, // โลโก้เป็นจัตุรัส ใช้ 800x800 เลยครับ
+          height: 800, 
+          alt: "สาววายขอแปล",
         },
       ],
       type: "article", 
     },
     twitter: {
-      // ✨ เปลี่ยนจาก summary_large_image เป็น summary เฉยๆ เพื่อให้กรอบแชร์ดูเล็กกะทัดรัด
+      // ✨ ใช้ card แบบ summary จะได้รูปจัตุรัสเล็กๆ สวยๆ ไม่ใหญ่เต็มจอ
       card: "summary", 
       title: `${isAdult ? '🔞 [18+] ' : ''}${manga.title} - สาววายขอแปล`,
       description: siteDescription,
@@ -71,7 +67,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function MangaPage({ params }: Props) {
   const { slug } = await params;
   
-  // ✨ เรียกใช้ Client-side Redirect เพื่อถ่วงเวลาให้บอทอ่านรูปปกก่อน
+  // ✨ เรียกใช้ Client-side Redirect เพื่อถ่วงเวลาให้บอทอ่านข้อมูลก่อน
   return <RedirectHandler slug={slug} />;
 }
 
