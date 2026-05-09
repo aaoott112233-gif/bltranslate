@@ -13,7 +13,7 @@ export default function RedirectHandler({ slug }: { slug: string }) {
   return (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center text-white font-sans">
       <p className="text-xs text-gray-500 animate-pulse tracking-widest uppercase">
-        กำลังพาไปหน้าอ่าน...
+        กำลังพาไปหน้าเรื่อง...
       </p>
     </div>
   );

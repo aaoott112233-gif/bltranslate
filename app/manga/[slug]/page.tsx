@@ -26,6 +26,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // ✨ จัดการข้อความ Fallback กรณีไม่มีคำอธิบาย
   const siteDescription = manga.description || `อ่านมังฮวา BL เรื่อง ${manga.title} สนุกฟินจิกหมอน แปลแต่วายงับบ - สาววายขอแปล`;
 
+  // ✨ โลจิกป้องกัน AI แบนลิงก์! (จุดสำคัญที่สุด)
+  const isAdult = manga.mangaType === 'bl_18';
+  
+  // ถ้าเป็น 18+ ให้ดึงรูปลับมาใช้แทน (เปลี่ยนลิงก์เป็นเว็บจริงของแอดมินด้วยนะครับ)
+  // ถ้าไม่ใช่ 18+ ให้ใช้รูปปกเดิม แต่จำกัดขนาดความกว้างเพื่อไม่ให้เฟสบุ๊คขยายเต็มจอ
+  const shareImageUrl = isAdult 
+    ? "https://bltranslate.vercel.app/profile.png" // 👈 แก้โดเมนตรงนี้ด้วยน้าาา
+    : `${manga.coverUrl}?w=600&fit=max`;
+
+  
   return {
     title: `${manga.title} - สาววายขอแปล`,
     description: siteDescription,
@@ -34,24 +44,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       canonical: `/manga/${slug}`,
     },
     openGraph: {
-      title: `${manga.title} - สาววายขอแปล`,
+      // ✨ ถ้าเป็น 18+ แอบเติมคำเตือนหน้าชื่อเรื่องให้ดึงดูดใจ
+      title: `${isAdult ? '🔞 [18+] ' : ''}${manga.title} - สาววายขอแปล`,
       description: siteDescription,
       siteName: "สาววายขอแปล",
       images: [
         {
-          url: manga.coverUrl,
-          width: 800,
-          height: 1200,
+          url: shareImageUrl, // ✨ ใช้รูปที่ผ่านการกรองแล้ว
+          width: 600,
+          height: isAdult ? 600 : 850, // ปรับความสูงตามชนิดรูป (โปรไฟล์=จัตุรัส / ปก=แนวตั้ง)
           alt: manga.title,
         },
       ],
       type: "article", 
     },
     twitter: {
-      card: "summary_large_image",
-      title: `${manga.title} - สาววายขอแปล`,
+      // ✨ เปลี่ยนจาก summary_large_image เป็น summary เฉยๆ เพื่อให้กรอบแชร์ดูเล็กกะทัดรัด
+      card: "summary", 
+      title: `${isAdult ? '🔞 [18+] ' : ''}${manga.title} - สาววายขอแปล`,
       description: siteDescription,
-      images: [manga.coverUrl],
+      images: [shareImageUrl],
     },
   };
 }
