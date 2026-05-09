@@ -11,6 +11,7 @@ import {
 import { Toaster } from 'sonner';
 import MangaCard from "@/components/MangaCard";
 import MangaRow from "@/components/MangaRow";
+import AgeGate from "@/components/AgeGate";
 import { sendGAEvent } from '@next/third-parties/google';
 
 // --- 🕒 Helper: คำนวณเวลาอัปเดต ---
@@ -32,7 +33,6 @@ const FacebookIcon = () => <svg width="24" height="24" fill="currentColor" viewB
 const YoutubeIcon = () => <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>;
 const TikTokIcon = () => <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-4.17.07-8.33.07-12.5z"/></svg>;
 
-// ✨ ปรับ Query ดึง mangaType มาเพื่อใช้คัดกรองแท็บใหม่ ✨
 const getMangaQuery = `*[_type == "manga"] | order(_updatedAt desc) {
   ...,
   "slug": slug.current,
@@ -69,31 +69,38 @@ export default function Home() {
   const [displayLimit, setDisplayLimit] = useState(12);
   const [showSchedule, setShowSchedule] = useState(false);
 
+  // ✨ State สำหรับคุม Age Gate
+  const [isAdultConfirmed, setIsAdultConfirmed] = useState(false);
+  const [showAgeGate, setShowAgeGate] = useState(false);
+  const [pendingMangaToOpen, setPendingMangaToOpen] = useState<any>(null);
+  
+  // ✨ เพิ่ม State นี้เพื่อจำว่าลูกเพจกดแท็บไหนไว้ ก่อนที่ป๊อปอัปจะเด้งขวาง
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
+
   const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   const [selectedDay, setSelectedDay] = useState(dayNames[new Date().getDay()]);
-  
   const catalogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (selectedManga) {
-      sendGAEvent('event', 'view_manga', {
-        manga_title: selectedManga.title
-      });
+      sendGAEvent('event', 'view_manga', { manga_title: selectedManga.title });
     }
   }, [selectedManga]);
 
   useEffect(() => {
+    const isConfirmed = localStorage.getItem("isAdultConfirmed") === "true";
+    setIsAdultConfirmed(isConfirmed);
+    
+    // เด้งป๊อปอัปเตือนทันทีตอนเปิดเว็บ เพราะหน้า "ทั้งหมด" มี 18+
+    if (!isConfirmed) {
+      setShowAgeGate(true);
+      document.body.style.overflow = "hidden";
+    }
+
     client.fetch(getMangaQuery).then((data) => setAllManga(data || []));
   }, []);
 
-  useEffect(() => {
-    const featured = allManga.filter((m: any) => m.isFeatured);
-    if (featured.length <= 1) return;
-    const timer = setInterval(() => setCurrentBanner((prev) => (prev + 1) % featured.length), 5000);
-    return () => clearInterval(timer);
-  }, [allManga]);
-
-  // ✨ โค้ดใหม่: สำหรับอ่านค่า ?open=... จาก URL แล้วเปิด Modal อัตโนมัติ
+  // ระบบจัดการแชร์ลิงก์ (?open=...)
   useEffect(() => {
     if (typeof window !== 'undefined' && allManga.length > 0) {
       const params = new URLSearchParams(window.location.search);
@@ -101,16 +108,78 @@ export default function Home() {
       if (openSlug) {
         const found = allManga.find((m: any) => m.slug === openSlug);
         if (found) {
-          setSelectedManga(found);
-          // เอา query ออกจาก URL เพื่อให้ลิงก์ดูสะอาดตาหลังจากเปิดเรื่องแล้ว
+          if (found.mangaType === 'bl_18' && localStorage.getItem('isAdultConfirmed') !== 'true') {
+            setPendingMangaToOpen(found);
+            setShowAgeGate(true);
+            document.body.style.overflow = "hidden";
+          } else {
+            setSelectedManga(found);
+          }
           window.history.replaceState({}, '', '/');
         }
       }
     }
   }, [allManga]);
 
+  // ✨ ฟังก์ชันเมื่อลูกเพจกด "ฉันมีอายุ 18 ปีขึ้นไป"
+  const handleConfirmAge = () => {
+    localStorage.setItem("isAdultConfirmed", "true");
+    setIsAdultConfirmed(true);
+    setShowAgeGate(false);
+    document.body.style.overflow = "auto";
+    
+    // ถ้ามีเรื่องที่กดแชร์รออยู่ ให้เปิดเลย
+    if (pendingMangaToOpen) {
+      setSelectedManga(pendingMangaToOpen);
+      setPendingMangaToOpen(null);
+    }
+
+    // ✨ ถ้ามีแท็บที่กดค้างไว้ (เช่น กด 'ทั้งหมด' หรือ 'จบแล้ว') ก็ให้เปลี่ยนไปแท็บนั้นเลย
+    if (pendingTab) {
+      setActiveTab(pendingTab);
+      setPendingTab(null);
+    }
+  };
+
+  // ✨ ฟังก์ชันเมื่อลูกเพจกด "อายุยังไม่ถึง"
+  const handleDeclineAge = () => {
+    setShowAgeGate(false);
+    document.body.style.overflow = "auto";
+    setPendingMangaToOpen(null);
+    setPendingTab(null); // ✨ ล้างค่าแท็บที่จำไว้ทิ้งไป
+    setActiveTab("🌈 BL ปกติ"); // ดีดกลับไปแท็บใสๆ
+  };
+
+  // ระบบ Banner หมุนอัตโนมัติ
+  const featuredManga = useMemo(() => {
+    return allManga.filter((m: any) => m.isFeatured && (isAdultConfirmed || m.mangaType !== 'bl_18'));
+  }, [allManga, isAdultConfirmed]);
+
+  useEffect(() => {
+    if (featuredManga.length <= 1) return;
+    const timer = setInterval(() => setCurrentBanner((prev) => (prev + 1) % featuredManga.length), 5000);
+    return () => clearInterval(timer);
+  }, [featuredManga]);
+
+  const handleBannerClick = (manga: any) => {
+    if (manga.mangaType === 'bl_18' && !isAdultConfirmed) {
+      setPendingMangaToOpen(manga);
+      setShowAgeGate(true);
+      document.body.style.overflow = "hidden";
+    } else {
+      setSelectedManga(manga);
+    }
+  };
+
+  // ตัวกรองเนื้อหา
   const processedManga = useMemo(() => {
     let result = allManga;
+    
+    // ซ่อนเนื้อหา 18+ เสมอถ้ายังไม่ยืนยัน
+    if (!isAdultConfirmed) {
+      result = result.filter((m: any) => m.mangaType !== 'bl_18');
+    }
+
     if (activeTab !== "ทั้งหมด") {
       if (activeTab === "✅ จบแล้ว") {
         result = result.filter((m: any) => m.status === "completed" || m.status === "จบแล้ว");
@@ -128,7 +197,7 @@ export default function Home() {
       );
     }
     return result;
-  }, [allManga, activeTab, searchQuery]);
+  }, [allManga, activeTab, searchQuery, isAdultConfirmed]);
 
   const latestUpdatedManga = useMemo(() => {
     return [...processedManga].sort((a, b) => {
@@ -139,16 +208,12 @@ export default function Home() {
   }, [processedManga]);
 
   const scheduledManga = useMemo(() => {
-    return allManga.filter((m: any) => m.updateDay === selectedDay);
-  }, [allManga, selectedDay]);
-
-  const featuredManga = useMemo(() => allManga.filter((m: any) => m.isFeatured), [allManga]);
+    return allManga.filter((m: any) => m.updateDay === selectedDay && (isAdultConfirmed || m.mangaType !== 'bl_18'));
+  }, [allManga, selectedDay, isAdultConfirmed]);
 
   const completedManga = useMemo(() => {
-    return allManga
-      .filter((m: any) => m.status === "completed" || m.status === "จบแล้ว")
-      .slice(0, 10);
-  }, [allManga]);
+    return processedManga.filter((m: any) => m.status === "completed" || m.status === "จบแล้ว").slice(0, 10);
+  }, [processedManga]);
 
   const isSearching = searchQuery.trim().length > 0;
 
@@ -162,6 +227,13 @@ export default function Home() {
     <div className="min-h-screen w-full bg-[#050505] text-white pb-20 overflow-x-hidden font-sans selection:bg-pink-500/30">
       <Toaster position="bottom-right" theme="dark" richColors />
 
+      {/* 🚨 AGE GATE */}
+      <AgeGate 
+        isVisible={showAgeGate} 
+        onConfirm={handleConfirmAge} 
+        onDecline={handleDeclineAge} 
+      />
+
       {/* --- 1. Top Banner --- */}
       {!isSearching && featuredManga.length > 0 && (
         <section className="w-full h-[220px] md:h-[450px] relative overflow-hidden bg-black border-b border-white/5">
@@ -173,7 +245,7 @@ export default function Home() {
               animate={{ opacity: 0.85 }} 
               exit={{ opacity: 0 }} 
               transition={{ duration: 0.4 }} 
-              onClick={() => setSelectedManga(featuredManga[currentBanner])}
+              onClick={() => handleBannerClick(featuredManga[currentBanner])}
             >
               <img src={featuredManga[currentBanner]?.bannerUrl || featuredManga[currentBanner]?.coverUrl} className="w-full h-full object-cover" alt="" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent" />
@@ -191,9 +263,8 @@ export default function Home() {
         </section>
       )}
 
-      {/* --- 2. Branding Header: สาววายขอแปล --- */}
+      {/* --- 2. Branding Header --- */}
       <div className="mt-10 mb-8 px-4 md:px-6 flex flex-col items-center">
-        {/* ✨ นำ scale-110 md:scale-125 และขนาดรูปกลับมาให้เท่าเว็บเดิมเป๊ะๆ */}
         <div className="flex items-center gap-6 mb-5 scale-110 md:scale-125 transition-transform duration-500">
           <div className="relative">
              <div className="absolute inset-0 bg-pink-500 blur-2xl opacity-20 rounded-full" />
@@ -214,9 +285,9 @@ export default function Home() {
         </div>
 
         <div className="flex gap-10 text-gray-400 mb-8 transition-all">
-           <a href="https://www.facebook.com/share/1CL7rzs25b/?mibextid=wwXIfr" className="hover:text-blue-500 transition-all hover:-translate-y-1 hover:scale-110 active:scale-95"><FacebookIcon /></a>
+           <a href="https://web.facebook.com/profile.php?id=61576696733974" className="hover:text-blue-500 transition-all hover:-translate-y-1 hover:scale-110 active:scale-95"><FacebookIcon /></a>
            <a href="#" className="hover:text-red-600 transition-all hover:-translate-y-1 hover:scale-110 active:scale-95"><YoutubeIcon /></a>
-           <a href="https://www.tiktok.com/@translatelover?_r=1&_t=ZS-95Z1UuW6LG4" className="hover:text-pink-500 transition-all hover:-translate-y-1 hover:scale-110 active:scale-95"><TikTokIcon /></a>
+           <a href="https://www.tiktok.com/@bltranslate?is_from_webapp=1&sender_device=pc" className="hover:text-pink-500 transition-all hover:-translate-y-1 hover:scale-110 active:scale-95"><TikTokIcon /></a>
         </div>
 
         {/* --- 3. Search & Control Center --- */}
@@ -237,7 +308,16 @@ export default function Home() {
               {['ทั้งหมด', '🌈 BL ปกติ', '🔞 BL 18+', '✅ จบแล้ว'].map((tab) => (
                 <button 
                   key={tab} 
-                  onClick={() => setActiveTab(tab)} 
+                  onClick={() => {
+                    // ✨ 9. ดักการกดแท็บ! ถ้ายังไม่ยืนยัน และกดแท็บที่มีเนื้อหา 18+ (ทั้งหมด, 18+, จบแล้ว)
+                    if (!isAdultConfirmed && (tab === "ทั้งหมด" || tab === "🔞 BL 18+" || tab === "✅ จบแล้ว")) {
+                      setPendingTab(tab); // จำว่าพยายามจะเข้าแท็บไหน
+                      setShowAgeGate(true); // เด้งป๊อปอัปขวาง
+                      document.body.style.overflow = "hidden";
+                      return;
+                    }
+                    setActiveTab(tab);
+                  }} 
                   className={`flex-1 md:flex-none px-6 py-2 rounded-xl text-[10px] font-black uppercase whitespace-nowrap transition-all ${activeTab === tab ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
                 >
                   {tab}
@@ -246,7 +326,6 @@ export default function Home() {
             </div>
             
             <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-center flex-wrap sm:flex-nowrap">
-              {/* ✨ ปุ่มลิงก์ไปเว็บชายหญิง */}
               <a 
                 href="https://translatelover.vercel.app" 
                 target="_blank"
@@ -260,7 +339,10 @@ export default function Home() {
               </a>
 
               <button 
-                onClick={() => setSelectedManga(allManga[Math.floor(Math.random() * allManga.length)])} 
+                onClick={() => {
+                  const randomManga = processedManga[Math.floor(Math.random() * processedManga.length)];
+                  setSelectedManga(randomManga);
+                }} 
                 className="p-3 md:p-3.5 bg-[#111] border border-white/10 rounded-2xl text-gray-400 hover:text-pink-500 shadow-lg active:scale-90 transition-all flex-shrink-0"
                 title="สุ่มเรื่องอ่าน"
               >
@@ -290,7 +372,6 @@ export default function Home() {
         {!isSearching ? (
           <div className="space-y-12 md:space-y-16">
             
-            {/* --- ตารางอัปเดตรายสัปดาห์ --- */}
             <AnimatePresence>
               {showSchedule && (
                 <motion.div 
@@ -345,23 +426,39 @@ export default function Home() {
               icon={<Zap size={18} className="text-pink-500" fill="currentColor"/>} 
               items={latestUpdatedManga} 
               onCardClick={setSelectedManga} 
+              viewAllLink="/catalog?sort=latest_update"
               gridCols={gridCols} 
               showTime={true} 
               getRelativeTime={getRelativeTime} 
             />
             
-            <MangaRow title="มังฮวา BL เข้าใหม่" icon={<Plus size={18}/>} items={[...processedManga].sort((a,b) => b._createdAt.localeCompare(a._createdAt)).slice(0, 10)} onCardClick={setSelectedManga} gridCols={gridCols} />
-            <MangaRow title="เรื่องยอดนิยมประจำสัปดาห์" icon={<Crown size={18} className="text-yellow-500" fill="currentColor"/>} items={[...processedManga].sort((a,b) => (b.viewCount || 0) - (a.viewCount || 0)).slice(0, 10)} onCardClick={setSelectedManga} gridCols={gridCols} />
+            <MangaRow 
+              title="มังฮวา BL เข้าใหม่" 
+              icon={<Plus size={18}/>} 
+              items={[...processedManga].sort((a,b) => b._createdAt.localeCompare(a._createdAt)).slice(0, 10)} 
+              onCardClick={setSelectedManga} 
+              viewAllLink="/catalog?sort=newest"
+              gridCols={gridCols} 
+            />
+            
+            <MangaRow 
+              title="เรื่องยอดนิยมประจำสัปดาห์" 
+              icon={<Crown size={18} className="text-yellow-500" fill="currentColor"/>} 
+              items={[...processedManga].sort((a,b) => (b.viewCount || 0) - (a.viewCount || 0)).slice(0, 10)} 
+              onCardClick={setSelectedManga} 
+              viewAllLink="/catalog?sort=popular"
+              gridCols={gridCols} 
+            />
 
             <MangaRow 
               title="มังฮวาที่แปลจบสมบูรณ์" 
               icon={<CheckCircle size={18} className="text-emerald-500" />} 
               items={completedManga} 
               onCardClick={setSelectedManga} 
+              viewAllLink="/catalog?tab=completed"
               gridCols={gridCols} 
             />
             
-            {/* Catalog Section */}
             <section ref={catalogRef} className="pt-10 border-t border-white/5">
               <div className="flex items-center gap-3 mb-10 px-2">
                 <div className="p-3 bg-pink-500/10 rounded-xl border border-pink-500/20 shadow-lg">
@@ -373,7 +470,12 @@ export default function Home() {
               <div className={`grid ${getGridClass()} gap-3 md:gap-5 transition-all duration-500`}>
                 <AnimatePresence mode="popLayout">
                   {processedManga.slice(0, displayLimit).map((m: any) => (
-                    <MangaCard key={m.slug} manga={m} onClick={() => setSelectedManga(m)} />
+                    <MangaCard 
+                      key={m.slug} 
+                      manga={m} 
+                      onClick={() => setSelectedManga(m)} 
+                      gridMode={gridCols} /* ✨ ส่งไซส์ปุ่ม (1,2,3) ให้การ์ดข้างล่างสุดรู้ตัว */
+                    />
                   ))}
                 </AnimatePresence>
               </div>
@@ -392,7 +494,14 @@ export default function Home() {
           </div>
         ) : (
           <div className={`grid ${getGridClass()} gap-3 md:gap-5`}>
-            {processedManga.map((m: any) => <MangaCard key={m.slug} manga={m} onClick={() => setSelectedManga(m)} />)}
+            {processedManga.map((m: any) => (
+              <MangaCard 
+                key={m.slug} 
+                manga={m} 
+                onClick={() => setSelectedManga(m)} 
+                gridMode={gridCols} /* ✨ ส่งค่าเผื่อเวลาลูกเพจกดเสิร์ชค้นหาด้วย */
+              />
+            ))}
           </div>
         )}
       </div>

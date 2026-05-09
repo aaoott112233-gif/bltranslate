@@ -1,43 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
 
-export default function AgeGate() {
-  const [showPopup, setShowPopup] = useState(false);
+// ✨ สร้างตัวรับคำสั่ง (Props) จากหน้าหลัก
+interface AgeGateProps {
+  isVisible: boolean;
+  onConfirm: () => void;
+  onDecline: () => void;
+}
 
-  useEffect(() => {
-    // เช็กว่าลูกเพจเคยเข้ามากดยืนยันหรือยัง (ถ้ายืนยันแล้วระบบจะจำไว้ในเครื่อง)
-    const isAdult = localStorage.getItem("isAdultConfirmed");
-    if (!isAdult) {
-      // หน่วงเวลาให้เว็บโหลดเสร็จนิดนึงค่อยเด้ง จะได้ดูสมูท
-      const timer = setTimeout(() => setShowPopup(true), 500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
-  const handleConfirm = () => {
-    // กดยืนยัน -> จำค่าไว้ -> ปิดป๊อปอัป
-    localStorage.setItem("isAdultConfirmed", "true");
-    setShowPopup(false);
-  };
-
-  const handleDecline = () => {
-    // กดไม่ถึง 18 -> วาร์ปกลับไปเว็บแปลรักข้างหมอน (Normal) ทันที
-    window.location.href = "https://translatelover.vercel.app";
-  };
-
+export default function AgeGate({ isVisible, onConfirm, onDecline }: AgeGateProps) {
   return (
     <AnimatePresence>
-      {showPopup && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          {/* พื้นหลังเบลอๆ สีดำ */}
+      {isVisible && (
+        // ✨ แก้ z-index เป็น 99999 ให้อยู่หน้าสุดของจักรวาล บังมังฮวาทุกเรื่องมิดชิด
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+          
+          {/* ✨ ปรับพื้นหลังให้ดำสนิทขึ้น (98%) และเบลอจัดขึ้น เพื่อไม่ให้เห็นภาพมังฮวาด้านหลัง */}
           <motion.div 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            className="absolute inset-0 bg-[#050505]/98 backdrop-blur-xl"
           />
           
           {/* ตัวกล่องข้อความ */}
@@ -45,7 +30,8 @@ export default function AgeGate() {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative bg-[#111] border border-white/10 p-8 md:p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center overflow-hidden"
+            // ✨ เพิ่ม shadow ให้กล่องดูโดดเด่นขึ้นตัดกับพื้นหลังสีดำ
+            className="relative bg-[#111] border border-white/10 p-8 md:p-10 rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,1)] max-w-md w-full text-center overflow-hidden"
           >
             {/* แสงสีชมพูด้านหลัง */}
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-pink-600/20 blur-[60px] rounded-full pointer-events-none" />
@@ -67,17 +53,18 @@ export default function AgeGate() {
 
             <div className="flex flex-col gap-3 relative z-10">
               <button 
-                onClick={handleConfirm}
+                onClick={onConfirm} // ✨ รับคำสั่งยืนยันจากหน้าหลัก
                 className="w-full py-4 bg-pink-600 hover:bg-pink-500 text-white font-black text-sm rounded-2xl uppercase tracking-[0.2em] transition-all active:scale-95 shadow-lg shadow-pink-500/20"
               >
                 ฉันมีอายุ 18 ปีขึ้นไป
               </button>
               
               <button 
-                onClick={handleDecline}
+                onClick={onDecline} // ✨ รับคำสั่งปฏิเสธจากหน้าหลัก
                 className="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white font-bold text-xs rounded-2xl uppercase tracking-widest transition-all active:scale-95"
               >
-                อายุยังไม่ถึง (กลับไปอ่านแนวปกติ)
+                {/* ✨ เปลี่ยนข้อความปุ่มให้เข้ากับบริบทว่ายังอยู่ในเว็บเดิม */}
+                อายุยังไม่ถึง (อ่านแนวปกติ)
               </button>
             </div>
           </motion.div>

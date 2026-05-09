@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import MangaCard from "./MangaCard";
 import { ChevronRight } from "lucide-react";
-// ✨ Import สำหรับส่งข้อมูลสถิติ
+import Link from "next/link";
 import { sendGAEvent } from '@next/third-parties/google'; 
 
 interface MangaRowProps {
@@ -11,7 +11,7 @@ interface MangaRowProps {
   icon: any;
   items: any[];
   onCardClick: (manga: any) => void;
-  onViewAll?: () => void;
+  viewAllLink?: string; 
   gridCols: number;
   showTime?: boolean;
   getRelativeTime?: (date: string) => string;
@@ -22,7 +22,7 @@ export default function MangaRow({
   icon, 
   items, 
   onCardClick, 
-  onViewAll, 
+  viewAllLink, 
   gridCols,
   showTime,
   getRelativeTime 
@@ -40,24 +40,19 @@ export default function MangaRow({
     }
   };
 
-  // ✨ ฟังก์ชันดักจับการคลิกเพื่อเก็บสถิติ
   const handleCardClick = (manga: any) => {
-    // ส่งข้อมูลไปบอก Google ว่ามีการคลิกที่เรื่องนี้ จากแถวไหน (title)
     sendGAEvent('event', 'row_item_click', { 
       row_title: title, 
       manga_title: manga.title 
     });
-    
-    // เรียกฟังก์ชันเปิด Modal เดิม
     onCardClick(manga);
   };
 
   return (
     <div className="w-full mb-8 md:mb-12 group/row relative px-2">
-      {/* --- 🏷️ Header แถว (เปลี่ยนเป็นสีชมพูสาววาย) --- */}
       <div className="flex items-center justify-between mb-4 px-1 md:px-2">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-pink-500/10 border border-pink-500/20 rounded-xl text-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.1)] group-hover/row:border-pink-500/40 transition-all duration-500">
+          <div className="p-2 bg-pink-500/10 border border-pink-500/20 rounded-xl text-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.1)] transition-all duration-500">
             {icon && <span className="scale-90 inline-block">{icon}</span>}
           </div>
           
@@ -65,25 +60,23 @@ export default function MangaRow({
             <h2 className="text-base md:text-xl font-black uppercase tracking-tight italic text-white/90 leading-none">
               {title}
             </h2>
-            {/* เส้นใต้หัวข้อสีชมพู */}
             <div className="h-[1.5px] w-8 bg-pink-500 mt-1.5 rounded-full opacity-40 group-hover/row:w-full transition-all duration-700 ease-in-out" />
           </div>
         </div>
         
-        {onViewAll && (
-          <button 
-            onClick={onViewAll}
-            className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 hover:text-white transition-all group/btn"
+        {viewAllLink && (
+          <Link 
+            href={viewAllLink}
+            className="flex items-center gap-1 pr-1 group/btn"
           >
-            <span className="border-b border-transparent group-hover/btn:border-pink-500 transition-all pb-0.5">
-              VIEW ALL
+            <span className="text-[10px] md:text-xs font-bold text-gray-500 group-hover/btn:text-white transition-colors duration-300">
+              ดูทั้งหมด
             </span>
-            <ChevronRight size={14} className="group-hover/btn:translate-x-1.5 transition-transform text-pink-500" />
-          </button>
+            <ChevronRight size={16} className="text-gray-500 group-hover/btn:text-white group-hover/btn:translate-x-1 transition-all duration-300" />
+          </Link>
         )}
       </div>
 
-      {/* --- 🖼️ รายการมังฮวา --- */}
       <div className="relative overflow-visible group/scroll">
         <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-[#050505] via-[#050505]/20 to-transparent z-10 pointer-events-none hidden md:block opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-500" />
         
@@ -108,15 +101,34 @@ export default function MangaRow({
                 manga={manga} 
                 onClick={() => handleCardClick(manga)} 
                 relativeTime={showTime && getRelativeTime ? getRelativeTime(manga.chapterUpdatedAt || manga._updatedAt) : null}
+                gridMode={gridCols} /* ✨ 2. ส่งค่าปุ่มที่กด (1,2,3) ทะลุเข้าไปให้การ์ด */
               />
             </motion.div>
           ))}
           
+          {viewAllLink && items.length > 10 && (
+             <div className={`${getDynamicWidth()} flex-shrink-0 snap-start`}>
+               <Link href={viewAllLink} className="block w-full h-full min-h-[200px] md:min-h-[260px] group/more">
+                 <div className="w-full h-full rounded-2xl bg-transparent hover:bg-[#111] flex flex-col items-center justify-center gap-3 transition-colors duration-300 border border-transparent hover:border-white/5">
+                    
+                    <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center group-hover/more:bg-white/5 transition-all duration-300">
+                       <ChevronRight size={20} className="text-gray-600 group-hover/more:text-white group-hover/more:translate-x-0.5 transition-transform duration-300" />
+                    </div>
+                    
+                    <div className="flex flex-col items-center gap-0.5">
+                       <span className="text-xs md:text-sm font-medium text-gray-500 group-hover/more:text-white transition-colors duration-300">ดูทั้งหมด</span>
+                       <span className="text-[10px] text-gray-600">({items.length})</span>
+                    </div>
+
+                 </div>
+               </Link>
+             </div>
+          )}
+
           <div className="w-10 flex-shrink-0" />
         </div>
       </div>
 
-      {/* ✨ ปรับ Scrollbar ให้เป็นสีชมพูหวานๆ ✨ */}
       <style jsx global>{`
         .premium-scrollbar::-webkit-scrollbar { height: 5px; transition: all 0.3s ease; }
         .premium-scrollbar::-webkit-scrollbar-track { background: transparent; margin-inline: 10px; }

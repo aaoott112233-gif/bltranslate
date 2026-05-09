@@ -59,15 +59,15 @@ interface MangaProps {
   onMangaSwap?: (item: any) => void;
   allManga?: any[]; 
   relativeTime?: string | null;
+  isCompact?: boolean;
+  gridMode?: number;
 }
 
-// ✨ Helper สำหรับเช็กสถานะเรื่อง
 const isCompleted = (status: string) => 
   status === 'completed' || 
   status === '✅ แปลจบแล้ว (Completed)' || 
   status === 'จบแล้ว';
 
-// --- 🎨 Detailed Suggestion Card (สีชมพูสาววาย) ---
 const DetailedSuggestion = ({ item, onMangaSwap }: any) => {
   const getStatusStyle = (status: string) => {
     if (isCompleted(status)) return 'bg-pink-600 text-white';
@@ -113,10 +113,9 @@ const DetailedSuggestion = ({ item, onMangaSwap }: any) => {
   );
 };
 
-export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMangaSwap, allManga, relativeTime }: MangaProps) {
+export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMangaSwap, allManga, relativeTime, isCompact, gridMode }: MangaProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
-  // ✨ ปรับสี Status ให้เป็นชมพู-เขียว ตามสไตล์เพจ
   const getStatusColor = (status: string) => {
     if (isCompleted(status)) return 'bg-pink-500';
     if (status === 'ongoing' || status === '✍️ อัปเดตตอนใหม่ (Ongoing)') return 'bg-emerald-500';
@@ -150,18 +149,64 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
     ).slice(0, 4);
   }, [allManga, manga.slug, manga.genres]);
 
+  const activeGridMode = gridMode || (isCompact ? 3 : 2);
+  
+  // ✨ อัปเดตขนาดตัวอักษรและ padding ให้ป้ายเวลาด้วย!
+  let bs = {
+    ep: 'top-2.5 right-2.5 text-[10px] md:text-[12px] px-2.5 py-1 rounded-lg',
+    status: 'top-2.5 left-2.5 px-3 py-1 rounded-full text-[10px] md:text-[12px]',
+    title: 'text-[12px] md:text-[14px] p-4',
+    adult: 'bottom-2.5 right-2.5 text-[10px] md:text-[12px] px-2 py-0.5 rounded',
+    time: 'bottom-2 left-2 px-2 py-1 rounded text-[9px] md:text-[10px]' // ⌚ Default
+  };
+
+  if (activeGridMode === 1) { 
+    bs = {
+      ep: 'top-3 right-3 text-[12px] sm:text-[14px] px-3.5 py-1.5 rounded-xl',
+      status: 'top-3 left-3 px-3.5 py-1.5 rounded-full text-[12px] sm:text-[14px]',
+      title: 'text-[14px] sm:text-[16px] p-5 sm:p-6',
+      adult: 'bottom-3 right-3 text-[12px] sm:text-[14px] px-2.5 py-1 rounded-lg',
+      time: 'bottom-3 left-3 px-2.5 py-1.5 rounded-md text-[11px] sm:text-[12px]' // ⌚ ขนาดใหญ่
+    };
+  } else if (activeGridMode === 3) { 
+    bs = {
+      ep: 'top-1.5 right-1.5 text-[8.5px] md:text-[10px] px-1.5 py-0.5 rounded-md',
+      status: 'top-1.5 left-1.5 px-2 py-0.5 rounded-full text-[8.5px] md:text-[10px]',
+      title: 'text-[10px] md:text-[12px] p-2.5 md:p-3',
+      adult: 'bottom-1.5 right-1.5 text-[8px] md:text-[10px] px-1.5 py-[2px] rounded-sm',
+      time: 'bottom-1.5 left-1.5 px-1.5 py-[2px] rounded-sm text-[8px]' // ⌚ ขนาดจิ๋ว
+    };
+  }
+
   if (!isGlobalModal) {
     return (
       <motion.div layout whileHover={{ y: -6 }} onClick={onClick} className="relative group cursor-pointer bg-[#0D0D0D] rounded-xl md:rounded-2xl overflow-hidden border border-white/5 aspect-[3/4.2] shadow-2xl mx-0.5">
-        <div className="absolute top-2.5 right-2.5 z-10 bg-pink-600 text-[10px] md:text-[12px] font-black px-2.5 py-1.5 rounded-lg shadow-xl border border-white/10 uppercase">EP.{manga.latestChapter}</div>
-        <div className={`absolute top-2.5 left-2.5 z-10 px-3 py-1.5 rounded-full text-[10px] md:text-[12px] font-black text-white ${getStatusColor(manga.status)} shadow-xl uppercase`}>
+        
+        <div className={`absolute z-10 bg-pink-600 font-black shadow-xl border border-white/10 uppercase transition-all duration-300 ${bs.ep}`}>
+          EP.{manga.latestChapter}
+        </div>
+        
+        <div className={`absolute z-10 font-black text-white ${getStatusColor(manga.status)} shadow-xl uppercase transition-all duration-300 ${bs.status}`}>
           {isCompleted(manga.status) ? 'จบแล้ว' : 'ปั่นอยู่'}
         </div>
+        
         <img src={manga.coverUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={manga.title} loading="lazy" />
-        {relativeTime && <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[9px] font-bold text-gray-300 border border-white/5 z-10">{relativeTime}</div>}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end p-4 md:p-6"><span className="text-[12px] md:text-[14px] font-bold leading-tight line-clamp-2 text-white italic uppercase tracking-tighter">{manga.title}</span></div>
-        {/* ✨ ปรับการเช็คเรท 18+ ตาม Schema ใหม่ */}
-        {manga.mangaType === 'bl_18' && <div className="absolute bottom-2.5 right-2.5 z-10 bg-red-600/90 backdrop-blur-md text-[10px] md:text-[12px] font-black px-2 py-0.5 rounded shadow-xl text-white border border-white/20">🔞 18+</div>}
+        
+        {/* ✨ ป้ายเวลาอัปเดต จะดึงค่าขนาดจาก bs.time และมี animation เปลี่ยนขนาดลื่นไหล ✨ */}
+        {relativeTime && <div className={`absolute bg-black/60 backdrop-blur-md font-bold text-gray-300 border border-white/5 z-10 transition-all duration-300 ${bs.time}`}>
+          {relativeTime}
+        </div>}
+        
+        <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end ${bs.title}`}>
+          <span className="font-bold leading-tight line-clamp-2 text-white italic uppercase tracking-tighter">
+            {manga.title}
+          </span>
+        </div>
+        
+        {manga.mangaType === 'bl_18' && <div className={`absolute z-10 bg-red-600/90 backdrop-blur-md font-black shadow-xl text-white border border-white/20 transition-all duration-300 ${bs.adult}`}>
+          18+
+        </div>}
+
       </motion.div>
     );
   }
@@ -194,7 +239,6 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
 
         <div className="overflow-y-auto custom-vertical-scrollbar p-5 md:p-10 pt-2 space-y-4 md:space-y-6 touch-pan-y">
           
-          {/* 1. HEADER SECTION */}
           <div className="flex flex-row gap-4 md:gap-8 items-start relative">
             <div className="w-32 sm:w-48 md:w-60 flex-shrink-0 relative group/cover">
                <img src={manga.coverUrl} className="w-full aspect-[3/4.2] object-cover rounded-2xl md:rounded-[2.5rem] shadow-2xl border border-white/10" alt={manga.title} />
@@ -232,7 +276,6 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
             </div>
           </div>
 
-          {/* 2. SYNOPSIS (สีชมพูอ่อน) */}
           <div className="bg-white/[0.02] p-5 md:p-7 rounded-[1.5rem] md:rounded-[2.5rem] border border-white/5 relative overflow-hidden group">
             <div className="absolute top-0 left-0 w-1 h-full bg-pink-600 opacity-40 group-hover:opacity-100 transition-opacity" />
             <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-2">Synopsis / เรื่องย่อ</h4>
@@ -257,7 +300,6 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
             </div>
           </div>
 
-          {/* 3. READING CHANNEL */}
           <div className="space-y-3">
              <h4 className="text-[10px] sm:text-[11px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
                 <ExternalLink size={14} className="text-pink-500" /> เลือกช่องทางการอ่าน
@@ -288,7 +330,6 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
              </div>
           </div>
 
-          {/* 4. LOWER SECTION: Suggestions */}
           <div className="grid md:grid-cols-2 gap-6 border-t border-white/5 pt-6">
             <div className="space-y-4">
               <h4 className="text-[10px] sm:text-[11px] font-black text-blue-500 uppercase tracking-[0.4em] flex items-center gap-3 ml-2"><Info size={16} /> รูปแบบอื่น (จักรวาลเดียวกัน)</h4>
@@ -309,7 +350,6 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
             </div>
           </div>
 
-          {/* 5. FOOTER TAGS */}
           <div className="border-t border-white/5 pt-6 mt-4 text-center pb-8">
              <h4 className="text-[9px] font-black text-gray-600 uppercase tracking-[0.5em] mb-4 flex items-center justify-center gap-3"><TagIcon size={12} /> Keywords</h4>
              <div className="flex flex-wrap justify-center gap-2">
