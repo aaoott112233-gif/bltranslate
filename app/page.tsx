@@ -93,6 +93,22 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [allManga]);
 
+  // ✨ โค้ดใหม่: สำหรับอ่านค่า ?open=... จาก URL แล้วเปิด Modal อัตโนมัติ
+  useEffect(() => {
+    if (typeof window !== 'undefined' && allManga.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const openSlug = params.get('open');
+      if (openSlug) {
+        const found = allManga.find((m: any) => m.slug === openSlug);
+        if (found) {
+          setSelectedManga(found);
+          // เอา query ออกจาก URL เพื่อให้ลิงก์ดูสะอาดตาหลังจากเปิดเรื่องแล้ว
+          window.history.replaceState({}, '', '/');
+        }
+      }
+    }
+  }, [allManga]);
+
   const processedManga = useMemo(() => {
     let result = allManga;
     if (activeTab !== "ทั้งหมด") {

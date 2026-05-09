@@ -1,6 +1,6 @@
 import { client } from "@/sanity/lib/client";
 import { Metadata } from "next";
-import { redirect } from "next/navigation";
+import RedirectHandler from "./RedirectHandler";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -15,28 +15,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     "coverUrl": cover.asset->url,
-    "siteTitle": "สาววายขอแปล" // ✨ 1. แก้ไขเป็นชื่อเพจใหม่
+    "siteTitle": "สาววายขอแปล"
   }`;
   
   const manga = await client.fetch(query, { slug });
 
   // กรณีหาเรื่องนั้นไม่เจอ
-  if (!manga) return { title: "ไม่พบมังฮวาที่ค้นหา | สาววายขอแปล" }; // ✨ 2. แก้ไขเป็นชื่อเพจใหม่
+  if (!manga) return { title: "ไม่พบมังฮวาที่ค้นหา | สาววายขอแปล" };
 
   // ✨ จัดการข้อความ Fallback กรณีไม่มีคำอธิบาย
-  const siteDescription = manga.description || `อ่านมังฮวา BL เรื่อง ${manga.title} สนุกฟินจิกหมอน แปลแต่วายงับบ - สาววายขอแปล`; // ✨ 3. ปรับสโลแกนให้เข้ากับสายวาย
+  const siteDescription = manga.description || `อ่านมังฮวา BL เรื่อง ${manga.title} สนุกฟินจิกหมอน แปลแต่วายงับบ - สาววายขอแปล`;
 
   return {
-    title: `${manga.title} - สาววายขอแปล`, // ✨ 4. แก้ไขเป็นชื่อเพจใหม่
+    title: `${manga.title} - สาววายขอแปล`,
     description: siteDescription,
     // ✨ เพิ่ม Canonical URL เพื่อป้องกัน Google สับสนเรื่องหน้าซ้ำ
     alternates: {
       canonical: `/manga/${slug}`,
     },
     openGraph: {
-      title: `${manga.title} - สาววายขอแปล`, // ✨ 5. ทำให้การแชร์เห็นชื่อเพจชัดเจนขึ้น
+      title: `${manga.title} - สาววายขอแปล`,
       description: siteDescription,
-      siteName: "สาววายขอแปล", // ✨ 6. แก้ไขเป็นชื่อเพจใหม่
+      siteName: "สาววายขอแปล",
       images: [
         {
           url: manga.coverUrl,
@@ -59,7 +59,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function MangaPage({ params }: Props) {
   const { slug } = await params;
   
-  // ✨ ส่งกลับหน้าหลักพร้อมพารามิเตอร์เพื่อให้เปิด Modal อัตโนมัติ
-  redirect(`/?open=${slug}`);
+  // ✨ เรียกใช้ Client-side Redirect เพื่อถ่วงเวลาให้บอทอ่านรูปปกก่อน
+  return <RedirectHandler slug={slug} />;
 }
 
