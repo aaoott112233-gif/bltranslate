@@ -302,7 +302,8 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-1.5 bg-[#111] p-1.5 rounded-2xl border border-white/5 w-full md:w-auto overflow-x-auto no-scrollbar">
+            {/* ✨ บังคับให้กล่องกว้างเต็ม 100% เสมอ */}
+            <div className="flex gap-1.5 bg-[#111] p-1.5 rounded-2xl border border-white/5 w-full overflow-x-auto no-scrollbar">
               {['ทั้งหมด', '🌈 BL ปกติ', '🔞 BL 18+', '✅ จบแล้ว'].map((tab) => (
                 <button 
                   key={tab} 
@@ -315,7 +316,8 @@ export default function Home() {
                     }
                     setActiveTab(tab);
                   }} 
-                  className={`flex-1 md:flex-none px-6 py-2 rounded-xl text-[10px] font-black uppercase whitespace-nowrap transition-all ${activeTab === tab ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                  /* ✨ ใช้ flex-1 เพื่อให้ทุกปุ่มแบ่งความกว้างเท่าๆ กัน */
+                  className={`flex-1 px-2 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-[11px] font-black uppercase whitespace-nowrap transition-all ${activeTab === tab ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
                 >
                   {tab}
                 </button>

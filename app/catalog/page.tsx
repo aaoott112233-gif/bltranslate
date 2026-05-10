@@ -220,15 +220,21 @@ export default function CatalogPage() {
               >
                 รวมทุกแนว
               </button>
-              {uniqueGenres.map((genre: any) => (
-                <button
-                  key={genre}
-                  onClick={() => { setSelectedGenre(genre); setCurrentPage(1); }}
-                  className={`snap-start shrink-0 px-4 py-2 rounded-full text-[10px] md:text-xs font-black uppercase transition-all border ${selectedGenre === genre ? 'bg-pink-600/10 text-pink-400 border-pink-500/30 shadow-[0_0_15px_rgba(236,72,153,0.15)]' : 'bg-[#111] text-gray-500 border-white/5 hover:border-white/10 hover:text-gray-300'}`}
-                >
-                  #{genre}
-                </button>
-              ))}
+              {uniqueGenres.map((genre: any) => {
+                // ✨ ให้นับจำนวนเรื่องที่มีหมวดหมู่นี้อยู่
+                const count = allManga.filter((m: any) => m.genres?.includes(genre)).length;
+                return (
+                  <button
+                    key={genre}
+                    onClick={() => { setSelectedGenre(genre); setCurrentPage(1); }}
+                    className={`snap-start shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] md:text-xs font-black uppercase transition-all border ${selectedGenre === genre ? 'bg-pink-600/10 text-pink-400 border-pink-500/30 shadow-[0_0_15px_rgba(236,72,153,0.15)]' : 'bg-[#111] text-gray-500 border-white/5 hover:border-white/10 hover:text-gray-300'}`}
+                  >
+                    <span>#{genre}</span>
+                    {/* ✨ แสดงตัวเลขในวงเล็บ สีจะดรอปลงมานิดนึงให้ดูมีมิติ */}
+                    <span className={`text-[9px] ${selectedGenre === genre ? 'text-pink-300' : 'text-gray-600'}`}>({count})</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
