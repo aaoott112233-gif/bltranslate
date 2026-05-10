@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation"; 
 import { 
   ExternalLink, 
   BookOpen, 
@@ -62,14 +63,28 @@ interface MangaProps {
   relativeTime?: string | null;
   isCompact?: boolean;
   gridMode?: number;
+  isBookmarkPage?: boolean;
 }
+
+const newChapterPhrases = [
+  "มีตอนใหม่ค้าบ! 👀",
+  "อัปเดตแล้วน้า 🫣",
+  "แวะมาอ่านหน่อย 🥺"
+];
 
 const isCompleted = (status: string) => 
   status === 'completed' || 
   status === '✅ แปลจบแล้ว (Completed)' || 
   status === 'จบแล้ว';
 
-const DetailedSuggestion = ({ item, onMangaSwap }: any) => {
+const DetailedSuggestion = ({ item, onMangaSwap, getRedirectUrl }: any) => {
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem('manga_bookmarks') || '[]');
+    setIsSaved(saved.some((b: any) => b.slug === item.slug));
+  }, [item.slug]);
+
   const getStatusStyle = (status: string) => {
     if (isCompleted(status)) return 'bg-pink-600 text-white';
     if (status === 'ongoing' || status === '✍️ อัปเดตตอนใหม่ (Ongoing)') return 'bg-emerald-600 text-white';
@@ -78,54 +93,137 @@ const DetailedSuggestion = ({ item, onMangaSwap }: any) => {
     return 'bg-white/10 text-gray-400';
   };
 
+  const handleBookmark = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const saved = JSON.parse(localStorage.getItem('manga_bookmarks') || '[]');
+    if (isSaved) {
+      const updated = saved.filter((b: any) => b.slug !== item.slug);
+      localStorage.setItem('manga_bookmarks', JSON.stringify(updated));
+      setIsSaved(false);
+      toast.error("เอาออกจากชั้นหนังสือแล้ว", { icon: "💔" });
+    } else {
+      saved.push({
+        slug: item.slug, title: item.title, coverUrl: item.coverUrl,
+        latestChapter: item.latestChapter, status: item.status,
+        mangaType: item.mangaType, chapterUpdatedAt: item.chapterUpdatedAt || item._updatedAt
+      });
+      localStorage.setItem('manga_bookmarks', JSON.stringify(saved));
+      setIsSaved(true);
+      toast.success("เก็บเข้าชั้นหนังสือแล้ว!", { icon: "❤️" });
+    }
+  };
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}/manga/${item.slug}`;
+    navigator.clipboard.writeText(shareUrl);
+    toast.success("คัดลอกลิงก์ไปส่งต่อให้เพื่อนสาวแล้วนะ!");
+  };
+
   return (
     <div 
       onClick={() => onMangaSwap?.(item)} 
-      className="cursor-pointer flex flex-col gap-3 p-3 bg-white/[0.03] border border-white/5 rounded-2xl hover:bg-pink-500/10 transition-all group/item shadow-lg"
+      className="cursor-pointer flex flex-col p-3 bg-white/[0.03] border border-white/5 rounded-2xl hover:bg-pink-500/10 transition-all group/item shadow-lg"
     >
-      <div className="flex gap-4 items-start">
+      <div className="flex gap-3 items-stretch relative">
         <div className="relative w-20 h-28 sm:w-24 sm:h-34 flex-shrink-0 rounded-xl overflow-hidden shadow-xl border border-white/5">
           <Image src={item.coverUrl} alt={item.title} fill sizes="100px" className="object-cover group-hover/item:scale-110 transition-transform duration-500" />
         </div>
         
-        <div className="flex flex-col flex-1 min-w-0 pt-0">
-          <h5 className="text-[11px] sm:text-[14px] font-bold text-gray-100 line-clamp-2 uppercase italic mb-1 leading-tight transition-colors group-hover/item:text-pink-400">
-            {item.title}
-          </h5>
-          <p className="text-[9px] text-gray-500 uppercase truncate mb-2.5 opacity-60 font-medium">{item.englishTitle}</p>
-          
-          <div className="flex flex-wrap gap-1.5 mb-2.5 items-center">
-              <span className="text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black uppercase shadow-sm border border-white/10">
-                EP.{item.latestChapter || '??'}
-              </span>
-              <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase shadow-sm ${getStatusStyle(item.status)}`}>
-                {isCompleted(item.status) ? 'จบแล้ว' : 'ปั่นอยู่'}
-              </span>
+        <div className="flex flex-col flex-1 min-w-0 pt-0 justify-between">
+          <div>
+            <h5 className="text-[11px] sm:text-[14px] font-bold text-gray-100 line-clamp-2 uppercase italic mb-1 leading-tight transition-colors group-hover/item:text-pink-400">
+              {item.title}
+            </h5>
+            <p className="text-[9px] text-gray-500 uppercase truncate mb-2 opacity-60 font-medium">{item.englishTitle}</p>
+            
+            <div className="flex flex-wrap gap-1.5 mb-2 items-center">
+                <span className="text-[8px] bg-pink-600 text-white px-1.5 py-0.5 rounded font-black uppercase shadow-sm border border-pink-500/20">
+                  EP.{item.latestChapter || '??'}
+                </span>
+                <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase shadow-sm ${getStatusStyle(item.status)}`}>
+                  {isCompleted(item.status) ? 'จบแล้ว' : 'ปั่นอยู่'}
+                </span>
+                {item.mangaType === 'bl_18' && (
+                  <span className="text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black uppercase shadow-sm">
+                    18+
+                  </span>
+                )}
+            </div>
+            
+            <div className="flex flex-wrap gap-1">
+               {item.genres?.slice(0, 3).map((g: string) => (
+                 <span key={g} className="text-[8px] text-gray-500 font-medium border border-white/5 px-1.5 rounded">#{g}</span>
+               ))}
+            </div>
           </div>
-          
-          <div className="flex flex-wrap gap-1">
-             {item.genres?.slice(0, 3).map((g: string) => (
-               <span key={g} className="text-[8px] text-gray-500 font-medium border border-white/5 px-1.5 rounded">#{g}</span>
-             ))}
-          </div>
+
+          {item.mangaLinks && item.mangaLinks.length > 0 && (
+             <div className="flex flex-wrap gap-1.5 mt-2 w-full">
+               {item.mangaLinks.map((link: any, i: number) => (
+                 <a 
+                   key={i} 
+                   href={getRedirectUrl?.(link.url) || link.url} 
+                   target="_blank" 
+                   onClick={(e) => { e.stopPropagation(); sendGAEvent('event', 'click_reading_link', { manga_title: item.title, platform: link.platform }); }} 
+                   style={{ backgroundColor: link.btnColor || '#ec4899' }} 
+                   className="flex-1 min-w-[40%] flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[8px] font-black text-white uppercase shadow-md hover:brightness-110 active:scale-95 transition-all text-center"
+                 >
+                   <span className="truncate">{link.platform}</span> <ExternalLink size={10} className="shrink-0" />
+                 </a>
+               ))}
+             </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2 pl-2 border-l border-white/5 justify-center shrink-0">
+           <button onClick={handleShare} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-colors" title="แชร์เรื่องนี้">
+              <Share2 size={14} />
+           </button>
+           <button onClick={handleBookmark} className={`p-2 rounded-xl transition-colors ${isSaved ? 'bg-pink-600/20 text-pink-400 border border-pink-500/30' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-transparent'}`} title="เก็บเข้าชั้นหนังสือ">
+              <Heart size={14} className={isSaved ? "fill-current" : ""} />
+           </button>
         </div>
       </div>
     </div>
   );
 };
 
-export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMangaSwap, allManga, relativeTime, isCompact, gridMode }: MangaProps) {
+// ✨ 1. เติม isBookmarkPage เข้าไปในวงเล็บ
+export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMangaSwap, allManga, relativeTime, isCompact, gridMode, isBookmarkPage }: MangaProps) {
+  const router = useRouter(); 
   const [isExpanded, setIsExpanded] = useState(false);
-
   const [isSaved, setIsSaved] = useState(false);
+  
+  // ✨ 2. เพิ่ม State สำหรับระบบแจ้งเตือนตอนใหม่
+  const [hasNewChapter, setHasNewChapter] = useState(false);
+  const [randomPhrase, setRandomPhrase] = useState(newChapterPhrases[0]);
 
-  // เช็กว่าเรื่องนี้เคยถูกบันทึกไว้ในเบราว์เซอร์ไหมตอนเปิด Modal
+  // ✨ 1. เช็ค Bookmark และ ตอนใหม่
   useEffect(() => {
     const savedBookmarks = JSON.parse(localStorage.getItem('manga_bookmarks') || '[]');
     setIsSaved(savedBookmarks.includes(manga.slug));
-  }, [manga.slug]);
 
-  // ฟังก์ชันสลับสถานะ เก็บเข้า / เอาออก จากชั้นหนังสือ
+    if (isBookmarkPage) {
+      const readHistory = JSON.parse(localStorage.getItem('manga_read_history') || '{}');
+      const lastReadEP = readHistory[manga.slug];
+      // ถ้าไม่เคยอ่าน หรือ EP ปัจจุบันไม่ตรงกับที่เคยอ่าน = มีตอนใหม่!
+      if (lastReadEP !== manga.latestChapter) {
+        setHasNewChapter(true);
+        setRandomPhrase(newChapterPhrases[Math.floor(Math.random() * newChapterPhrases.length)]);
+      }
+    }
+  }, [manga.slug, manga.latestChapter, isBookmarkPage]);
+
+  // ✨ 2. บันทึกประวัติการอ่าน (เซฟอัตโนมัติเมื่อเปิด Modal เรื่องนั้นๆ)
+  useEffect(() => {
+    if (isGlobalModal) {
+      const readHistory = JSON.parse(localStorage.getItem('manga_read_history') || '{}');
+      readHistory[manga.slug] = manga.latestChapter; 
+      localStorage.setItem('manga_read_history', JSON.stringify(readHistory));
+    }
+  }, [isGlobalModal, manga.slug, manga.latestChapter]);
+
   const handleBookmark = (e: React.MouseEvent) => {
     e.stopPropagation();
     let savedBookmarks = JSON.parse(localStorage.getItem('manga_bookmarks') || '[]');
@@ -178,13 +276,12 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
 
   const activeGridMode = gridMode || (isCompact ? 3 : 2);
   
-  // ✨ อัปเดตขนาดตัวอักษรและ padding ให้ป้ายเวลาด้วย!
   let bs = {
     ep: 'top-2.5 right-2.5 text-[10px] md:text-[12px] px-2.5 py-1 rounded-lg',
     status: 'top-2.5 left-2.5 px-3 py-1 rounded-full text-[10px] md:text-[12px]',
     title: 'text-[12px] md:text-[14px] p-4',
     adult: 'bottom-2.5 right-2.5 text-[10px] md:text-[12px] px-2 py-0.5 rounded',
-    time: 'bottom-2 left-2 px-2 py-1 rounded text-[9px] md:text-[10px]' // ⌚ Default
+    time: 'bottom-2 left-2 px-2 py-1 rounded text-[9px] md:text-[10px]' 
   };
 
   if (activeGridMode === 1) { 
@@ -193,7 +290,7 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
       status: 'top-3 left-3 px-3.5 py-1.5 rounded-full text-[12px] sm:text-[14px]',
       title: 'text-[14px] sm:text-[16px] p-5 sm:p-6',
       adult: 'bottom-3 right-3 text-[12px] sm:text-[14px] px-2.5 py-1 rounded-lg',
-      time: 'bottom-3 left-3 px-2.5 py-1.5 rounded-md text-[11px] sm:text-[12px]' // ⌚ ขนาดใหญ่
+      time: 'bottom-3 left-3 px-2.5 py-1.5 rounded-md text-[11px] sm:text-[12px]'
     };
   } else if (activeGridMode === 3) { 
     bs = {
@@ -201,7 +298,7 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
       status: 'top-1.5 left-1.5 px-2 py-0.5 rounded-full text-[8.5px] md:text-[10px]',
       title: 'text-[10px] md:text-[12px] p-2.5 md:p-3',
       adult: 'bottom-1.5 right-1.5 text-[8px] md:text-[10px] px-1.5 py-[2px] rounded-sm',
-      time: 'bottom-1.5 left-1.5 px-1.5 py-[2px] rounded-sm text-[8px]' // ⌚ ขนาดจิ๋ว
+      time: 'bottom-1.5 left-1.5 px-1.5 py-[2px] rounded-sm text-[8px]'
     };
   }
 
@@ -209,7 +306,7 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
     return (
       <motion.div layout whileHover={{ y: -6 }} onClick={onClick} className="relative group cursor-pointer bg-[#0D0D0D] rounded-xl md:rounded-2xl overflow-hidden border border-white/5 aspect-[3/4.2] shadow-2xl mx-0.5">
         
-        <div className={`absolute z-10 bg-pink-600 font-black shadow-xl border border-white/10 uppercase transition-all duration-300 ${bs.ep}`}>
+        <div className={`absolute z-10 bg-pink-600 font-black shadow-xl border border-white/10 uppercase transition-all duration-300 text-white ${bs.ep}`}>
           EP.{manga.latestChapter}
         </div>
         
@@ -219,7 +316,6 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
         
         <Image src={manga.coverUrl} alt={manga.title} fill sizes="(max-width: 768px) 50vw, 33vw" className="object-cover transition-transform duration-700 group-hover:scale-110" />
         
-        {/* ✨ ป้ายเวลาอัปเดต จะดึงค่าขนาดจาก bs.time และมี animation เปลี่ยนขนาดลื่นไหล ✨ */}
         {relativeTime && <div className={`absolute bg-black/60 backdrop-blur-md font-bold text-gray-300 border border-white/5 z-10 transition-all duration-300 ${bs.time}`}>
           {relativeTime}
         </div>}
@@ -233,6 +329,15 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
         {manga.mangaType === 'bl_18' && <div className={`absolute z-10 bg-red-600/90 backdrop-blur-md font-black shadow-xl text-white border border-white/20 transition-all duration-300 ${bs.adult}`}>
            18+
         </div>}
+
+        {/* ✨ ป้ายคาดเตือนตอนใหม่ ธีมสีชมพู (ขยายตัวหนังสือให้อ่านง่ายและโดดเด่นขึ้น) */}
+        {hasNewChapter && (
+          <div className="absolute inset-x-0 top-[60%] -translate-y-1/2 bg-pink-600/95 backdrop-blur-md py-2 z-20 flex items-center justify-center -rotate-[12deg] shadow-[0_10px_30px_rgba(236,72,153,0.5)] border-y border-pink-400/50 group-hover:opacity-0 transition-opacity duration-300 pointer-events-none w-[120%] -left-[10%]">
+            <span className="text-[10px] sm:text-[11px] md:text-[12px] font-black text-white uppercase tracking-wide animate-pulse px-2 text-center drop-shadow-md">
+              {randomPhrase}
+            </span>
+          </div>
+        )}
 
       </motion.div>
     );
@@ -282,18 +387,30 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
                </div>
                
                <div className="flex flex-wrap gap-1.5 mb-3">
-                  <span className="px-2.5 py-1 sm:px-4 sm:py-1.5 bg-red-600 text-[8px] sm:text-[10px] font-black rounded-lg uppercase shadow-lg">EP.{manga.latestChapter || '??'}</span>
-                  <span className={`px-2.5 py-1 sm:px-4 sm:py-1.5 ${getStatusColor(manga.status)} text-[8px] sm:text-[10px] font-black rounded-lg uppercase shadow-lg`}>
+                  <span className="px-2.5 py-1 sm:px-4 sm:py-1.5 bg-pink-600 text-[8px] sm:text-[10px] font-black rounded-lg uppercase shadow-lg text-white">EP.{manga.latestChapter || '??'}</span>
+                  <span className={`px-2.5 py-1 sm:px-4 sm:py-1.5 ${getStatusColor(manga.status)} text-[8px] sm:text-[10px] font-black rounded-lg uppercase shadow-lg text-white`}>
                     {isCompleted(manga.status) ? 'จบแล้ว' : 'ปั่นอยู่'}
                   </span>
-                  <span className="px-2.5 py-1 sm:px-4 sm:py-1.5 bg-white/5 border border-white/10 text-[8px] sm:text-[10px] font-black rounded-lg uppercase">
-                    {manga.mangaType === 'bl_18' ? '🔞 ADULT 18+' : '🌈 MANHWA BL'}
-                  </span>
+                  {manga.mangaType === 'bl_18' ? (
+                    <span className="px-2.5 py-1 sm:px-4 sm:py-1.5 bg-red-600 text-[8px] sm:text-[10px] font-black rounded-lg uppercase shadow-lg text-white">
+                      18+
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 sm:px-4 sm:py-1.5 bg-white/5 border border-white/10 text-[8px] sm:text-[10px] font-black rounded-lg uppercase text-white">
+                      🌈 MANHWA BL
+                    </span>
+                  )}
                </div>
                
                <div className="flex flex-wrap gap-1.5 mb-4">
                   {manga.genres?.slice(0, 4).map((g) => (
-                    <span key={g} className="text-[8px] sm:text-[9px] text-gray-400 font-bold uppercase border border-white/5 px-2.5 py-1 rounded-lg hover:text-pink-400 transition-all cursor-default"># {g}</span>
+                    <button 
+                      key={g} 
+                      onClick={(e) => { e.stopPropagation(); router.push(`/catalog?genre=${encodeURIComponent(g)}`); onClose?.(); }}
+                      className="text-[8px] sm:text-[9px] text-gray-400 font-bold uppercase border border-white/5 px-2.5 py-1 rounded-lg hover:bg-pink-500/10 hover:border-pink-500/30 hover:text-pink-400 transition-all"
+                    >
+                      # {g}
+                    </button>
                   ))}
                </div>
 
@@ -302,7 +419,6 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
                    <Share2 size={12} /> แชร์ให้เพื่อนสาว
                  </button>
                  
-                 {/* ✨ ปุ่มเก็บเข้าชั้นหนังสือ (มาแล้วของจริง!) */}
                  <button 
                    onClick={handleBookmark} 
                    className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl transition-all text-[9px] sm:text-[10px] font-black border shadow-md ${isSaved ? 'bg-pink-600 text-white border-pink-500 shadow-pink-500/20' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border-white/5'}`}
@@ -374,7 +490,7 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
               <h4 className="text-[10px] sm:text-[11px] font-black text-blue-500 uppercase tracking-[0.4em] flex items-center gap-3 ml-2"><Info size={16} /> รูปแบบอื่น (จักรวาลเดียวกัน)</h4>
               <div className="grid grid-cols-1 gap-3">
                 {manga.relatedStories?.length ? manga.relatedStories.map((rel: any) => (
-                  <DetailedSuggestion key={rel.slug} item={rel} onMangaSwap={onMangaSwap} />
+                  <DetailedSuggestion key={rel.slug} item={rel} onMangaSwap={onMangaSwap} getRedirectUrl={getRedirectUrl} />
                 )) : <div className="py-6 text-center border border-dashed border-white/5 rounded-2xl text-gray-700 text-[10px] font-bold uppercase tracking-widest">No Related Data</div>}
               </div>
             </div>
@@ -383,7 +499,7 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
               <h4 className="text-[10px] sm:text-[11px] font-black text-pink-500 uppercase tracking-[0.4em] flex items-center gap-3 ml-2"><Flame size={16} /> เรื่องที่คุณอาจจะชอบ</h4>
               <div className="grid grid-cols-1 gap-3">
                 {similarStories.length ? similarStories.map((sim: any) => (
-                  <DetailedSuggestion key={sim.slug} item={sim} onMangaSwap={onMangaSwap} />
+                  <DetailedSuggestion key={sim.slug} item={sim} onMangaSwap={onMangaSwap} getRedirectUrl={getRedirectUrl} />
                 )) : <div className="py-6 text-center border border-dashed border-white/5 rounded-2xl text-gray-700 text-[10px] font-bold uppercase tracking-widest">No Recommendations</div>}
               </div>
             </div>
@@ -393,7 +509,13 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
              <h4 className="text-[9px] font-black text-gray-600 uppercase tracking-[0.5em] mb-4 flex items-center justify-center gap-3"><TagIcon size={12} /> Keywords</h4>
              <div className="flex flex-wrap justify-center gap-2">
                 {[manga.originalTitle, ...(manga.tags || [])].filter(Boolean).map((name) => (
-                  <span key={name as string} className="px-3 py-1.5 bg-white/[0.02] text-[9px] font-bold text-gray-600 rounded-lg border border-white/5 hover:border-pink-500/40 hover:text-pink-400 transition-all cursor-default">#{name as string}</span>
+                  <button 
+                    key={name as string} 
+                    onClick={(e) => { e.stopPropagation(); router.push(`/catalog?genre=${encodeURIComponent(name as string)}`); onClose?.(); }}
+                    className="px-3 py-1.5 bg-white/[0.02] text-[9px] font-bold text-gray-600 rounded-lg border border-white/5 hover:bg-pink-500/10 hover:border-pink-500/40 hover:text-pink-400 transition-all"
+                  >
+                    #{name as string}
+                  </button>
                 ))}
              </div>
           </div>

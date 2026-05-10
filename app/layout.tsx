@@ -4,6 +4,11 @@ import "./globals.css";
 // import { Analytics } from "@vercel/analytics/react"; // ✨ 1. เรียกใช้งาน Analytics
 import { GoogleAnalytics } from '@next/third-parties/google'; // ✨ 2. <--- แอดมินขาดบรรทัดนี้ไปครับ! 
 
+import AnnouncementBar from "@/components/AnnouncementBar"; // ✨ 3. นำเข้าแถบประกาศ
+import { client } from "@/sanity/lib/client"; // ✨ 4. นำเข้า Sanity Client
+
+export const dynamic = "force-dynamic"; // ✨ 5. บังคับห้ามจำแคช เพื่อให้เปิด-ปิดประกาศได้แบบ Real-time
+
 // ✨ ตั้งค่าฟอนต์ Kanit ให้รองรับภาษาไทย
 const kanit = Kanit({
   weight: ['300', '400', '500', '700', '900'],
@@ -33,17 +38,35 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+// ✨ 6. เปลี่ยนเป็น async function เพื่อให้ดึงข้อมูลจากหลังบ้านได้
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  
+  // ✨ 7. ดึงข้อมูลประกาศจาก Sanity (สั่งปิด CDN เพื่อให้ข้อมูลอัปเดตทันทีที่แก้ในหลังบ้าน)
+  const siteConfig = await client.withConfig({ useCdn: false }).fetch(
+    `*[_type == "siteConfig"][0]{
+      announcementText,
+      isAnnouncementActive
+    }`,
+    {},
+    { cache: 'no-store' } 
+  );
+
   return (
     // เปลี่ยน lang="en" เป็น "th" เพื่อให้ถูกหลัก SEO ของเว็บไทย
     <html lang="th" suppressHydrationWarning> 
       <body className={`${kanit.variable} font-sans antialiased`} suppressHydrationWarning>
         
+        {/* ✨ 8. ถ้าหลังบ้านกดเปิดใช้งานอยู่ ให้โชว์แถบประกาศสีชมพู */}
+        {siteConfig?.isAnnouncementActive && siteConfig?.announcementText && (
+           <AnnouncementBar text={siteConfig.announcementText} />
+        )}
+        
         {children}
+        
         {/* ✨ วาง Analytics ไว้ล่างสุดก่อนปิด body เพื่อเริ่มเก็บสถิติ */}
         {/* <Analytics />  */}
         <GoogleAnalytics gaId="G-1BTSRJSPK0" />

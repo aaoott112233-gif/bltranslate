@@ -210,6 +210,7 @@ export const mangaType = defineType({
                   {title: 'ม่วงเข้ม (Adult/Premium)', value: '#8b5cf6'},
                   {title: 'ฟ้า (Facebook)', value: '#3b82f6'},
                   {title: 'เขียว (Line Webtoon)', value: '#22c55e'},
+                  {title: 'ส้ม (Orange/Kakaopage)', value: '#f97316'},
                   {title: 'ดำ (Classic)', value: '#111111'},
                 ]
               },

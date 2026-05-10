@@ -62,9 +62,11 @@ export default function CatalogPage() {
       const params = new URLSearchParams(window.location.search);
       const sortParam = params.get('sort');
       const tabParam = params.get('tab');
+      const genreParam = params.get('genre'); // ✨ 1. เพิ่มบรรทัดนี้เพื่อรับค่า genre
       
       if (sortParam) setSortBy(sortParam);
       if (tabParam === 'completed') setActiveTab("✅ จบแล้ว");
+      if (genreParam) setSelectedGenre(genreParam); // ✨ 2. กำหนดค่าหมวดหมู่ให้ตรงกับที่กดมา
     }
 
     const isConfirmed = localStorage.getItem("isAdultConfirmed") === "true";

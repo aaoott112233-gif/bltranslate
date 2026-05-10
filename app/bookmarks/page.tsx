@@ -78,6 +78,7 @@ export default function BookmarksPage() {
                 onClick={() => setSelectedManga(m)}
                 relativeTime={getRelativeTime(m.chapterUpdatedAt || m._updatedAt)} 
                 isCompact={true}
+                isBookmarkPage={true}
               />
             ))}
           </div>
