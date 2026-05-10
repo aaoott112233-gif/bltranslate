@@ -277,15 +277,28 @@ export default function Home() {
 
         {/* --- 3. Search & Control Center --- */}
         <div className="w-full max-w-4xl space-y-5">
-          <div className="relative group">
-            <input 
-              type="text" 
-              placeholder="ค้นหามังฮวา BL ที่คุณรัก..." 
-              value={searchQuery} 
-              onChange={(e) => setSearchQuery(e.target.value)} 
-              className="w-full bg-[#111] border border-white/10 rounded-2xl py-4.5 px-10 text-base focus:border-pink-500 outline-none transition-all shadow-2xl" 
-            />
-            <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-pink-500 transition-colors" size={22} />
+          
+          {/* ✨ จับปุ่มหัวใจมายืนคู่กับช่องค้นหา (UI ยอดฮิตของเว็บอ่านการ์ตูน) */}
+          <div className="flex items-stretch gap-2 md:gap-3 w-full">
+            <div className="relative group flex-1">
+              <input 
+                type="text" 
+                placeholder="ค้นหามังฮวา BL ที่คุณรัก..." 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                className="w-full h-full bg-[#111] border border-white/10 rounded-2xl py-4 md:py-4.5 px-5 pr-12 text-[13px] md:text-base focus:border-pink-500 outline-none transition-all shadow-2xl" 
+              />
+              <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-pink-500 transition-colors" size={20} />
+            </div>
+
+            <Link 
+              href="/bookmarks" 
+              className="flex items-center justify-center bg-[#111] border border-white/10 hover:border-pink-500 hover:text-pink-500 text-gray-400 rounded-2xl w-[56px] md:w-[64px] transition-all shadow-2xl active:scale-95 group relative flex-shrink-0"
+              title="ชั้นหนังสือของฉัน"
+            >
+              <Heart size={22} className="md:w-[26px] md:h-[26px] group-hover:fill-pink-500/20 transition-all" />
+              <span className="absolute top-3 right-3 md:top-3.5 md:right-3.5 w-2 h-2 md:w-2.5 md:h-2.5 bg-pink-500 rounded-full shadow-[0_0_8px_rgba(236,72,153,1)] border border-[#111]"></span>
+            </Link>
           </div>
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -311,15 +324,6 @@ export default function Home() {
             
             <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-center flex-wrap sm:flex-nowrap">
               
-              {/* ✨ 5. ปุ่ม Bookmarks */}
-              <Link 
-                href="/bookmarks" 
-                className="p-3 md:p-3.5 bg-[#111] border border-white/10 rounded-2xl text-pink-500 hover:text-white hover:bg-pink-600 shadow-lg active:scale-90 transition-all flex-shrink-0" 
-                title="ชั้นหนังสือของฉัน"
-              >
-                 <Heart size={18} className="md:w-5 md:h-5 fill-current" />
-              </Link>
-
               <a 
                 href="https://translatelover.vercel.app" 
                 target="_blank"
