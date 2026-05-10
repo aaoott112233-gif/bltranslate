@@ -33,6 +33,7 @@ const getCatalogQuery = `*[_type == "manga"] {
   mangaType,
   viewCount,
   chapterUpdatedAt,
+  genres,
   _createdAt,
   _updatedAt
 }`;
@@ -48,6 +49,13 @@ export default function CatalogPage() {
   const [isAdultConfirmed, setIsAdultConfirmed] = useState(false);
   const [showAgeGate, setShowAgeGate] = useState(false);
   const [selectedManga, setSelectedManga] = useState<any>(null);
+
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+
+  const uniqueGenres = useMemo(() => {
+    const all = allManga.flatMap((m) => m.genres || []);
+    return Array.from(new Set(all)).filter(Boolean).sort();
+  }, [allManga]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -80,6 +88,11 @@ export default function CatalogPage() {
       }
     }
 
+    // ✨ ระบบกรองด้วยหมวดหมู่ (Genre)
+    if (selectedGenre) {
+      result = result.filter((m: any) => m.genres?.includes(selectedGenre));
+    }
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter((m: any) => 
@@ -105,7 +118,7 @@ export default function CatalogPage() {
     });
 
     return result;
-  }, [allManga, activeTab, searchQuery, sortBy, isAdultConfirmed]);
+  }, [allManga, activeTab, searchQuery, sortBy, isAdultConfirmed, selectedGenre]);
 
   const totalPages = Math.ceil(filteredAndSortedManga.length / itemsPerPage);
   const currentItems = filteredAndSortedManga.slice(
@@ -195,6 +208,30 @@ export default function CatalogPage() {
             ))}
           </div>
         </div>
+
+        {/* ✨ แถบหมวดหมู่ (Genre Bar) ปัดซ้าย-ขวาได้ ✨ */}
+        {uniqueGenres.length > 0 && (
+          <div className="w-full max-w-4xl mx-auto mt-4 px-2">
+            {/* ✨ เปลี่ยนมาใช้คลาส genre-scrollbar แทน เพื่อให้ใช้เมาส์คลิกลากได้แบบสวยๆ */}
+            <div className="flex gap-2 overflow-x-auto pb-3 snap-x genre-scrollbar">
+              <button
+                onClick={() => { setSelectedGenre(null); setCurrentPage(1); }}
+                className={`snap-start shrink-0 px-4 py-2 rounded-full text-[10px] md:text-xs font-black uppercase transition-all border ${!selectedGenre ? 'bg-white/10 text-white border-white/20 shadow-lg' : 'bg-transparent text-gray-500 border-white/5 hover:border-white/10'}`}
+              >
+                รวมทุกแนว
+              </button>
+              {uniqueGenres.map((genre: any) => (
+                <button
+                  key={genre}
+                  onClick={() => { setSelectedGenre(genre); setCurrentPage(1); }}
+                  className={`snap-start shrink-0 px-4 py-2 rounded-full text-[10px] md:text-xs font-black uppercase transition-all border ${selectedGenre === genre ? 'bg-pink-600/10 text-pink-400 border-pink-500/30 shadow-[0_0_15px_rgba(236,72,153,0.15)]' : 'bg-[#111] text-gray-500 border-white/5 hover:border-white/10 hover:text-gray-300'}`}
+                >
+                  #{genre}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* --- Manga Grid --- */}
@@ -276,7 +313,16 @@ export default function CatalogPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* ✨ เพิ่ม CSS แต่งสกรอลล์บาร์ให้เรียวบาง สีชมพูกลืนไปกับธีมเว็บ */}
+      <style jsx global>{`
+        .genre-scrollbar::-webkit-scrollbar { height: 4px; }
+        .genre-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .genre-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+        .genre-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(236, 72, 153, 0.6); }
+      `}</style>
     </div>
   );
 }
+
 
