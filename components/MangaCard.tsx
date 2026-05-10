@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ExternalLink, 
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from 'sonner';
 import { sendGAEvent } from '@next/third-parties/google'; 
+import Image from "next/image";
 
 interface MangaLink {
   platform: string;
@@ -84,7 +85,7 @@ const DetailedSuggestion = ({ item, onMangaSwap }: any) => {
     >
       <div className="flex gap-4 items-start">
         <div className="relative w-20 h-28 sm:w-24 sm:h-34 flex-shrink-0 rounded-xl overflow-hidden shadow-xl border border-white/5">
-          <img src={item.coverUrl} className="w-full h-full object-cover group-hover/item:scale-110 transition-transform duration-500" alt={item.title} />
+          <Image src={item.coverUrl} alt={item.title} fill sizes="100px" className="object-cover group-hover/item:scale-110 transition-transform duration-500" />
         </div>
         
         <div className="flex flex-col flex-1 min-w-0 pt-0">
@@ -115,6 +116,32 @@ const DetailedSuggestion = ({ item, onMangaSwap }: any) => {
 
 export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMangaSwap, allManga, relativeTime, isCompact, gridMode }: MangaProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const [isSaved, setIsSaved] = useState(false);
+
+  // เช็กว่าเรื่องนี้เคยถูกบันทึกไว้ในเบราว์เซอร์ไหมตอนเปิด Modal
+  useEffect(() => {
+    const savedBookmarks = JSON.parse(localStorage.getItem('manga_bookmarks') || '[]');
+    setIsSaved(savedBookmarks.includes(manga.slug));
+  }, [manga.slug]);
+
+  // ฟังก์ชันสลับสถานะ เก็บเข้า / เอาออก จากชั้นหนังสือ
+  const handleBookmark = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    let savedBookmarks = JSON.parse(localStorage.getItem('manga_bookmarks') || '[]');
+    
+    if (isSaved) {
+      savedBookmarks = savedBookmarks.filter((slug: string) => slug !== manga.slug);
+      localStorage.setItem('manga_bookmarks', JSON.stringify(savedBookmarks));
+      setIsSaved(false);
+      toast.error("เอาออกจากชั้นหนังสือแล้ว", { icon: "💔" });
+    } else {
+      savedBookmarks.push(manga.slug);
+      localStorage.setItem('manga_bookmarks', JSON.stringify(savedBookmarks));
+      setIsSaved(true);
+      toast.success("เก็บเข้าชั้นหนังสือแล้ว!", { icon: "❤️" });
+    }
+  };
   
   const getStatusColor = (status: string) => {
     if (isCompleted(status)) return 'bg-pink-500';
@@ -190,7 +217,7 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
           {isCompleted(manga.status) ? 'จบแล้ว' : 'ปั่นอยู่'}
         </div>
         
-        <img src={manga.coverUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={manga.title} loading="lazy" />
+        <Image src={manga.coverUrl} alt={manga.title} fill sizes="(max-width: 768px) 50vw, 33vw" className="object-cover transition-transform duration-700 group-hover:scale-110" />
         
         {/* ✨ ป้ายเวลาอัปเดต จะดึงค่าขนาดจาก bs.time และมี animation เปลี่ยนขนาดลื่นไหล ✨ */}
         {relativeTime && <div className={`absolute bg-black/60 backdrop-blur-md font-bold text-gray-300 border border-white/5 z-10 transition-all duration-300 ${bs.time}`}>
@@ -204,7 +231,7 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
         </div>
         
         {manga.mangaType === 'bl_18' && <div className={`absolute z-10 bg-red-600/90 backdrop-blur-md font-black shadow-xl text-white border border-white/20 transition-all duration-300 ${bs.adult}`}>
-          18+
+           18+
         </div>}
 
       </motion.div>
@@ -240,8 +267,8 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
         <div className="overflow-y-auto custom-vertical-scrollbar p-5 md:p-10 pt-2 space-y-4 md:space-y-6 touch-pan-y">
           
           <div className="flex flex-row gap-4 md:gap-8 items-start relative">
-            <div className="w-32 sm:w-48 md:w-60 flex-shrink-0 relative group/cover">
-               <img src={manga.coverUrl} className="w-full aspect-[3/4.2] object-cover rounded-2xl md:rounded-[2.5rem] shadow-2xl border border-white/10" alt={manga.title} />
+            <div className="w-32 sm:w-48 md:w-60 flex-shrink-0 relative group/cover aspect-[3/4.2] rounded-2xl md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10">
+              <Image src={manga.coverUrl} alt={manga.title} fill sizes="(max-width: 768px) 50vw, 33vw" className="object-cover" />
             </div>
             
             <div className="flex-1 flex flex-col items-start text-left pt-0 min-w-0 pr-2">
@@ -270,9 +297,21 @@ export default function MangaCard({ manga, onClick, isGlobalModal, onClose, onMa
                   ))}
                </div>
 
-               <button onClick={handleShare} className="flex items-center gap-2 px-4 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-gray-400 hover:text-white text-[9px] sm:text-[10px] font-black border border-white/5 shadow-md">
-                 <Share2 size={12} /> แชร์ให้เพื่อนสาว
-               </button>
+               <div className="flex flex-wrap gap-2">
+                 <button onClick={handleShare} className="flex items-center gap-1.5 px-4 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-gray-400 hover:text-white text-[9px] sm:text-[10px] font-black border border-white/5 shadow-md">
+                   <Share2 size={12} /> แชร์ให้เพื่อนสาว
+                 </button>
+                 
+                 {/* ✨ ปุ่มเก็บเข้าชั้นหนังสือ (มาแล้วของจริง!) */}
+                 <button 
+                   onClick={handleBookmark} 
+                   className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl transition-all text-[9px] sm:text-[10px] font-black border shadow-md ${isSaved ? 'bg-pink-600 text-white border-pink-500 shadow-pink-500/20' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border-white/5'}`}
+                 >
+                   <Heart size={12} className={isSaved ? 'fill-white' : ''} /> 
+                   <span className="hidden sm:inline">{isSaved ? 'ลบออกจากชั้นหนังสือ' : 'เก็บเข้าชั้นหนังสือ'}</span>
+                   <span className="sm:hidden">{isSaved ? 'ลบออก' : 'บันทึก'}</span>
+                 </button>
+               </div>
             </div>
           </div>
 

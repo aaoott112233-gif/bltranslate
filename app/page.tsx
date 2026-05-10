@@ -6,8 +6,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Search, Flame, Crown, Zap, LayoutGrid, Shuffle, 
   ChevronLeft, ChevronRight, Plus, Square, Grid2X2, Grid3X3,
-  Calendar, Clock, CheckCircle, ExternalLink
+  Calendar, Clock, CheckCircle, ExternalLink, Heart // ✨ 1. เพิ่ม Heart icon
 } from "lucide-react";
+import Link from "next/link"; // ✨ 2. เพิ่ม Link
 import { Toaster } from 'sonner';
 import MangaCard from "@/components/MangaCard";
 import MangaRow from "@/components/MangaRow";
@@ -61,6 +62,7 @@ const days = [
 
 export default function Home() {
   const [allManga, setAllManga] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true); // ✨ 3. เพิ่ม State Loading
   const [activeTab, setActiveTab] = useState("ทั้งหมด");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedManga, setSelectedManga] = useState<any>(null); 
@@ -69,12 +71,9 @@ export default function Home() {
   const [displayLimit, setDisplayLimit] = useState(12);
   const [showSchedule, setShowSchedule] = useState(false);
 
-  // ✨ State สำหรับคุม Age Gate
   const [isAdultConfirmed, setIsAdultConfirmed] = useState(false);
   const [showAgeGate, setShowAgeGate] = useState(false);
   const [pendingMangaToOpen, setPendingMangaToOpen] = useState<any>(null);
-  
-  // ✨ เพิ่ม State นี้เพื่อจำว่าลูกเพจกดแท็บไหนไว้ ก่อนที่ป๊อปอัปจะเด้งขวาง
   const [pendingTab, setPendingTab] = useState<string | null>(null);
 
   const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
@@ -91,16 +90,18 @@ export default function Home() {
     const isConfirmed = localStorage.getItem("isAdultConfirmed") === "true";
     setIsAdultConfirmed(isConfirmed);
     
-    // เด้งป๊อปอัปเตือนทันทีตอนเปิดเว็บ เพราะหน้า "ทั้งหมด" มี 18+
     if (!isConfirmed) {
       setShowAgeGate(true);
       document.body.style.overflow = "hidden";
     }
 
-    client.fetch(getMangaQuery).then((data) => setAllManga(data || []));
+    // ✨ 4. โหลดเสร็จสั่งปิด Loading
+    client.fetch(getMangaQuery).then((data) => {
+      setAllManga(data || []);
+      setIsLoading(false);
+    });
   }, []);
 
-  // ระบบจัดการแชร์ลิงก์ (?open=...)
   useEffect(() => {
     if (typeof window !== 'undefined' && allManga.length > 0) {
       const params = new URLSearchParams(window.location.search);
@@ -121,36 +122,29 @@ export default function Home() {
     }
   }, [allManga]);
 
-  // ✨ ฟังก์ชันเมื่อลูกเพจกด "ฉันมีอายุ 18 ปีขึ้นไป"
   const handleConfirmAge = () => {
     localStorage.setItem("isAdultConfirmed", "true");
     setIsAdultConfirmed(true);
     setShowAgeGate(false);
     document.body.style.overflow = "auto";
-    
-    // ถ้ามีเรื่องที่กดแชร์รออยู่ ให้เปิดเลย
     if (pendingMangaToOpen) {
       setSelectedManga(pendingMangaToOpen);
       setPendingMangaToOpen(null);
     }
-
-    // ✨ ถ้ามีแท็บที่กดค้างไว้ (เช่น กด 'ทั้งหมด' หรือ 'จบแล้ว') ก็ให้เปลี่ยนไปแท็บนั้นเลย
     if (pendingTab) {
       setActiveTab(pendingTab);
       setPendingTab(null);
     }
   };
 
-  // ✨ ฟังก์ชันเมื่อลูกเพจกด "อายุยังไม่ถึง"
   const handleDeclineAge = () => {
     setShowAgeGate(false);
     document.body.style.overflow = "auto";
     setPendingMangaToOpen(null);
-    setPendingTab(null); // ✨ ล้างค่าแท็บที่จำไว้ทิ้งไป
-    setActiveTab("🌈 BL ปกติ"); // ดีดกลับไปแท็บใสๆ
+    setPendingTab(null);
+    setActiveTab("🌈 BL ปกติ");
   };
 
-  // ระบบ Banner หมุนอัตโนมัติ
   const featuredManga = useMemo(() => {
     return allManga.filter((m: any) => m.isFeatured && (isAdultConfirmed || m.mangaType !== 'bl_18'));
   }, [allManga, isAdultConfirmed]);
@@ -171,15 +165,11 @@ export default function Home() {
     }
   };
 
-  // ตัวกรองเนื้อหา
   const processedManga = useMemo(() => {
     let result = allManga;
-    
-    // ซ่อนเนื้อหา 18+ เสมอถ้ายังไม่ยืนยัน
     if (!isAdultConfirmed) {
       result = result.filter((m: any) => m.mangaType !== 'bl_18');
     }
-
     if (activeTab !== "ทั้งหมด") {
       if (activeTab === "✅ จบแล้ว") {
         result = result.filter((m: any) => m.status === "completed" || m.status === "จบแล้ว");
@@ -227,12 +217,7 @@ export default function Home() {
     <div className="min-h-screen w-full bg-[#050505] text-white pb-20 overflow-x-hidden font-sans selection:bg-pink-500/30">
       <Toaster position="bottom-right" theme="dark" richColors />
 
-      {/* 🚨 AGE GATE */}
-      <AgeGate 
-        isVisible={showAgeGate} 
-        onConfirm={handleConfirmAge} 
-        onDecline={handleDeclineAge} 
-      />
+      <AgeGate isVisible={showAgeGate} onConfirm={handleConfirmAge} onDecline={handleDeclineAge} />
 
       {/* --- 1. Top Banner --- */}
       {!isSearching && featuredManga.length > 0 && (
@@ -309,10 +294,9 @@ export default function Home() {
                 <button 
                   key={tab} 
                   onClick={() => {
-                    // ✨ 9. ดักการกดแท็บ! ถ้ายังไม่ยืนยัน และกดแท็บที่มีเนื้อหา 18+ (ทั้งหมด, 18+, จบแล้ว)
                     if (!isAdultConfirmed && (tab === "ทั้งหมด" || tab === "🔞 BL 18+" || tab === "✅ จบแล้ว")) {
-                      setPendingTab(tab); // จำว่าพยายามจะเข้าแท็บไหน
-                      setShowAgeGate(true); // เด้งป๊อปอัปขวาง
+                      setPendingTab(tab); 
+                      setShowAgeGate(true); 
                       document.body.style.overflow = "hidden";
                       return;
                     }
@@ -326,6 +310,16 @@ export default function Home() {
             </div>
             
             <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-center flex-wrap sm:flex-nowrap">
+              
+              {/* ✨ 5. ปุ่ม Bookmarks */}
+              <Link 
+                href="/bookmarks" 
+                className="p-3 md:p-3.5 bg-[#111] border border-white/10 rounded-2xl text-pink-500 hover:text-white hover:bg-pink-600 shadow-lg active:scale-90 transition-all flex-shrink-0" 
+                title="ชั้นหนังสือของฉัน"
+              >
+                 <Heart size={18} className="md:w-5 md:h-5 fill-current" />
+              </Link>
+
               <a 
                 href="https://translatelover.vercel.app" 
                 target="_blank"
@@ -415,6 +409,7 @@ export default function Home() {
                        items={scheduledManga} 
                        onCardClick={setSelectedManga} 
                        gridCols={gridCols} 
+                       isLoading={isLoading} /* ✨ ส่งค่า isLoading ให้ทุกแถว */
                     />
                   </div>
                 </motion.div>
@@ -430,6 +425,7 @@ export default function Home() {
               gridCols={gridCols} 
               showTime={true} 
               getRelativeTime={getRelativeTime} 
+              isLoading={isLoading} /* ✨ ส่งค่า isLoading ให้ทุกแถว */
             />
             
             <MangaRow 
@@ -439,6 +435,7 @@ export default function Home() {
               onCardClick={setSelectedManga} 
               viewAllLink="/catalog?sort=newest"
               gridCols={gridCols} 
+              isLoading={isLoading} /* ✨ ส่งค่า isLoading ให้ทุกแถว */
             />
             
             <MangaRow 
@@ -448,6 +445,7 @@ export default function Home() {
               onCardClick={setSelectedManga} 
               viewAllLink="/catalog?sort=popular"
               gridCols={gridCols} 
+              isLoading={isLoading} /* ✨ ส่งค่า isLoading ให้ทุกแถว */
             />
 
             <MangaRow 
@@ -457,6 +455,7 @@ export default function Home() {
               onCardClick={setSelectedManga} 
               viewAllLink="/catalog?tab=completed"
               gridCols={gridCols} 
+              isLoading={isLoading} /* ✨ ส่งค่า isLoading ให้ทุกแถว */
             />
             
             <section ref={catalogRef} className="pt-10 border-t border-white/5">
@@ -474,7 +473,7 @@ export default function Home() {
                       key={m.slug} 
                       manga={m} 
                       onClick={() => setSelectedManga(m)} 
-                      gridMode={gridCols} /* ✨ ส่งไซส์ปุ่ม (1,2,3) ให้การ์ดข้างล่างสุดรู้ตัว */
+                      gridMode={gridCols} 
                     />
                   ))}
                 </AnimatePresence>
@@ -499,7 +498,7 @@ export default function Home() {
                 key={m.slug} 
                 manga={m} 
                 onClick={() => setSelectedManga(m)} 
-                gridMode={gridCols} /* ✨ ส่งค่าเผื่อเวลาลูกเพจกดเสิร์ชค้นหาด้วย */
+                gridMode={gridCols} 
               />
             ))}
           </div>
@@ -525,4 +524,5 @@ export default function Home() {
     </div>
   );
 }
+
 
