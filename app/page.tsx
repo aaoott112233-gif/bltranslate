@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Search, Flame, Crown, Zap, LayoutGrid, Shuffle, 
   ChevronLeft, ChevronRight, Plus, Square, Grid2X2, Grid3X3,
-  Calendar, Clock, CheckCircle, ExternalLink, Heart // ✨ 1. เพิ่ม Heart icon
+  Calendar, Clock, CheckCircle, ExternalLink, Heart, Lock
 } from "lucide-react";
 import Link from "next/link"; // ✨ 2. เพิ่ม Link
 import { Toaster } from 'sonner';
@@ -89,11 +89,6 @@ export default function Home() {
   useEffect(() => {
     const isConfirmed = localStorage.getItem("isAdultConfirmed") === "true";
     setIsAdultConfirmed(isConfirmed);
-    
-    if (!isConfirmed) {
-      setShowAgeGate(true);
-      document.body.style.overflow = "hidden";
-    }
 
     // ✨ 4. โหลดเสร็จสั่งปิด Loading
     client.fetch(getMangaQuery).then((data) => {
@@ -131,10 +126,7 @@ export default function Home() {
       setSelectedManga(pendingMangaToOpen);
       setPendingMangaToOpen(null);
     }
-    if (pendingTab) {
-      setActiveTab(pendingTab);
-      setPendingTab(null);
-    }
+    setPendingTab(null);
   };
 
   const handleDeclineAge = () => {
@@ -142,7 +134,6 @@ export default function Home() {
     document.body.style.overflow = "auto";
     setPendingMangaToOpen(null);
     setPendingTab(null);
-    setActiveTab("🌈 BL ปกติ");
   };
 
   const featuredManga = useMemo(() => {
@@ -221,27 +212,24 @@ export default function Home() {
 
       {/* --- 1. Top Banner --- */}
       {!isSearching && featuredManga.length > 0 && (
-        <section className="w-full h-[220px] md:h-[450px] relative overflow-hidden bg-black border-b border-white/5">
+        <section className="relative w-full aspect-[2.5/1] sm:aspect-[3/1] md:aspect-[3.5/1] bg-black border-b border-white/5 overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.div 
               key={currentBanner} 
               className="absolute inset-0 w-full h-full cursor-pointer" 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 0.85 }} 
-              exit={{ opacity: 0 }} 
-              transition={{ duration: 0.4 }} 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }} 
               onClick={() => handleBannerClick(featuredManga[currentBanner])}
             >
-              <img src={featuredManga[currentBanner]?.bannerUrl || featuredManga[currentBanner]?.coverUrl} className="w-full h-full object-cover" alt="" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent" />
+              <img src={featuredManga[currentBanner]?.bannerUrl || featuredManga[currentBanner]?.coverUrl} className="w-full h-full object-cover object-center" alt="banner" />
+              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#050505]/90 via-[#050505]/10 to-transparent z-10 pointer-events-none" />
             </motion.div>
           </AnimatePresence>
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2.5 z-20">
+          <div className="absolute bottom-2 md:bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 md:gap-2.5 z-20">
             {featuredManga.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setCurrentBanner(i)}
-                className={`h-1.5 rounded-full transition-all duration-300 ${i === currentBanner ? 'w-10 bg-pink-500' : 'w-2 bg-white/20 hover:bg-white/40'}`}
+                className={`h-1 md:h-1.5 rounded-full transition-all duration-300 ${i === currentBanner ? 'w-6 md:w-10 bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)]' : 'w-1.5 md:w-2 bg-white/30 hover:bg-white/60'}`}
               />
             ))}
           </div>
@@ -308,15 +296,14 @@ export default function Home() {
                 <button 
                   key={tab} 
                   onClick={() => {
-                    if (!isAdultConfirmed && (tab === "ทั้งหมด" || tab === "🔞 BL 18+" || tab === "✅ จบแล้ว")) {
-                      setPendingTab(tab); 
+                    // ✨ ดักแค่ตอนกดเข้าแท็บ 18+ เท่านั้น
+                    if (tab === "🔞 BL 18+" && !isAdultConfirmed) {
                       setShowAgeGate(true); 
                       document.body.style.overflow = "hidden";
                       return;
                     }
                     setActiveTab(tab);
                   }} 
-                  /* ✨ ใช้ flex-1 เพื่อให้ทุกปุ่มแบ่งความกว้างเท่าๆ กัน */
                   className={`flex-1 px-2 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-[11px] font-black uppercase whitespace-nowrap transition-all ${activeTab === tab ? 'bg-pink-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
                 >
                   {tab}
@@ -366,6 +353,39 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* ✨ แถบเชิญชวนปลดล็อก 18+ (ธีมสาววาย สีชมพู-ดำ) */}
+      {activeTab === 'ทั้งหมด' && !isAdultConfirmed && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={() => {
+            setShowAgeGate(true);
+            document.body.style.overflow = "hidden";
+          }} 
+          className="mt-6 mb-4 mx-2 md:mx-8 cursor-pointer flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-[2rem] bg-gradient-to-r from-pink-950/40 to-[#111] border border-pink-500/20 hover:border-pink-500/50 hover:bg-pink-950/60 transition-all shadow-2xl group relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-32 h-full bg-pink-500/5 blur-3xl pointer-events-none" />
+
+          <div className="flex items-center gap-4 w-full sm:w-auto relative z-10">
+            <div className="p-3 bg-pink-500/10 rounded-2xl text-pink-500 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300">
+              <Lock size={22} />
+            </div>
+            <div className="text-left">
+              <h4 className="text-[14px] sm:text-[16px] font-black text-white tracking-tight">
+                พบเนื้อหา <span className="text-pink-400 italic">"ลับเฉพาะ"</span> ที่ถูกซ่อนอยู่... 🫣
+              </h4>
+              <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                ยืนยันอายุเพื่อเปิดการมองเห็นเรื่องแนว 18+ ทั้งหมดในหน้านี้
+              </p>
+            </div>
+          </div>
+          
+          <button className="w-full sm:w-auto px-7 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-white bg-pink-600 hover:bg-pink-500 rounded-2xl shadow-lg shadow-pink-600/20 transition-all active:scale-95 relative z-10">
+            ปลดล็อกตอนนี้
+          </button>
+        </motion.div>
+      )}
 
       {/* --- 4. Content Area --- */}
       <div className="w-full max-w-7xl mx-auto px-2 md:px-8">
